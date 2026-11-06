@@ -22,7 +22,7 @@
   button.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
   select.lang { padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 13px; }
   input[type=search] { padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); min-width: 180px; }
-  main { flex: 1; display: grid; grid-template-columns: 260px 1fr 280px; min-height: 0; }
+  main { flex: 1; display: grid; grid-template-columns: 260px 1fr; min-height: 0; }
   aside { background: var(--panel); border-right: 1px solid var(--border); overflow: auto; padding: 12px; }
   aside.links { border-right: 0; border-left: 1px solid var(--border); }
   aside h2 { font-size: 13px; color: var(--muted); margin: 6px 0 8px; font-weight: 600; }
@@ -37,7 +37,41 @@
   #content table { border-collapse: collapse; font-size: 13px; }
   #content td, #content th { border: 1px solid var(--border); padding: 4px 8px; }
   #content pre { background: var(--bg); padding: 12px; overflow: auto; border-radius: 6px; white-space: pre-wrap; word-break: break-word; }
-  #content a { color: var(--accent); }
+  #content a { color: #2563eb; text-decoration: underline; text-underline-offset: 2px; word-break: break-all; cursor: pointer; }
+  :root[data-theme="dark"] #content a:not(.xl-grid a) { color: #60a5fa; }
+  /* PDF 링크: 캔버스 위 투명 상자. screen 합성으로 검은 글자를 파랗게 보이게 함 */
+  #content a.pdf-link { position: absolute; display: block; background: #2563eb; mix-blend-mode: screen; border-bottom: 2px solid #2563eb; text-decoration: none; }
+
+  /* ---------- 전체 화면 보기 ---------- */
+  #fsBar { display: none; }
+  body.fs header, body.fs main > aside { display: none; }
+  body.fs #viewer { position: fixed; inset: 0; z-index: 50; padding: 0; background: var(--bg); overflow: auto; }
+  body.fs #content { max-width: none; min-height: 100%; border: 0; border-radius: 0; margin: 0; }
+  body.fs #fsBar { display: flex; gap: 6px; position: fixed; top: 10px; right: 10px; z-index: 60; }
+  #fsBar button { background: rgba(17,24,39,.72); color: #fff; border: 0; border-radius: 18px; min-width: 40px; height: 36px; font-size: 15px; backdrop-filter: blur(4px); }
+
+  /* ---------- 엑셀 보기 (열 머리글·행 번호·수식 입력줄·시트 탭) ---------- */
+  #content.sheet-mode { padding: 0; max-width: none; display: flex; flex-direction: column; height: calc(100vh - 150px); min-height: 60vh; overflow: hidden; }
+  body.fs #content.sheet-mode { height: 100vh; }
+  .xl-bar { display: flex; align-items: center; gap: 0; border-bottom: 1px solid #d4d4d4; background: #fff; color: #000; font-size: 13px; flex: 0 0 auto; }
+  .xl-bar .addr { width: 72px; padding: 6px 8px; border-right: 1px solid #d4d4d4; text-align: center; font-family: Consolas, monospace; }
+  .xl-bar .fx { padding: 6px 8px; color: #6b7280; font-style: italic; border-right: 1px solid #d4d4d4; }
+  .xl-bar .val { padding: 6px 8px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .xl-grid { flex: 1; overflow: auto; background: #fff; -webkit-overflow-scrolling: touch; }
+  #content .xl-grid table { border-collapse: separate; border-spacing: 0; table-layout: fixed; font: 13px Calibri, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; color: #000; }
+  #content .xl-grid td { border: 0; border-right: 1px solid #e1e1e1; border-bottom: 1px solid #e1e1e1; padding: 1px 4px; height: 21px; white-space: nowrap; overflow: hidden; background: #fff; vertical-align: bottom; }
+  #content .xl-grid td.num { text-align: right; }
+  #content .xl-grid td.ctr { text-align: center; }
+  #content .xl-grid td.sel { outline: 2px solid #107c41; outline-offset: -2px; }
+  #content .xl-grid th { background: #f3f3f3; color: #444; font-weight: 400; font-size: 12px; border: 0; border-right: 1px solid #c8c8c8; border-bottom: 1px solid #c8c8c8; padding: 0 2px; position: sticky; z-index: 1; text-align: center; height: 22px; }
+  #content .xl-grid thead th { top: 0; z-index: 2; }
+  #content .xl-grid tbody th { left: 0; }
+  #content .xl-grid thead th.corner { left: 0; z-index: 3; }
+  #content .xl-grid th.hl { background: #d3f0e0; color: #107c41; font-weight: 600; }
+  .xl-note { padding: 6px 10px; font-size: 12px; color: #92400e; background: #fffbeb; border-bottom: 1px solid #fde68a; }
+  .xl-tabs { display: flex; overflow-x: auto; background: #f3f3f3; border-top: 1px solid #c8c8c8; flex: 0 0 auto; }
+  .xl-tab { background: transparent; color: #333; border: 0; border-right: 1px solid #d4d4d4; border-radius: 0; padding: 9px 16px; white-space: nowrap; font-size: 13px; }
+  .xl-tab.active { background: #fff; color: #107c41; font-weight: 600; box-shadow: inset 0 -3px 0 #107c41; }
   img.hwp-img { max-width: 100%; height: auto; }
   .pdf-wrap { position: relative; width: fit-content; max-width: 100%; margin: 0 auto 16px; }
   .pdf-wrap .pdf-page { margin: 0; }
@@ -77,6 +111,7 @@
   <button class="ghost" id="zoomIn" disabled>A+</button>
   <button class="ghost" id="codeBtn" data-i18n="header.code">🔲 Codes</button>
   <button class="ghost" id="exportBtn" data-i18n="header.export" disabled>📤 Export</button>
+  <button class="ghost" id="fsBtn" data-i18n="header.fullscreen" disabled>⛶ Full screen</button>
   <button class="ghost" id="darkToggle" data-i18n="header.theme">🌓 Theme</button>
   <select class="lang" id="langSel" aria-label="Language">
     <option value="ko">한국어</option>
@@ -158,13 +193,14 @@
   </aside>
 
   <section id="viewer">
+    <div id="fsBar">
+      <button id="fsOut" aria-label="zoom out">A−</button>
+      <button id="fsIn" aria-label="zoom in">A+</button>
+      <button id="fsClose" aria-label="close">✕</button>
+    </div>
     <div id="content"><div class="empty"><span data-i18n="viewer.pick">Select a file on the left.</span><br><span data-i18n="viewer.supported">Supported: PDF, HWP, DOCX, XLSX, CSV, MD, TXT, images</span></div></div>
   </section>
 
-  <aside class="links">
-    <h2 data-i18n="links.heading">🔗 Links in document</h2>
-    <div id="linkList"><div class="empty" data-i18n="links.waiting">Links will appear when you open a document</div></div>
-  </aside>
 </main>
 
 <!-- 문서 읽기 라이브러리: 앱 안에 포함 (인터넷 없이 동작). scripts/vendor-libs.js 가 채움 -->
@@ -310,6 +346,9 @@
     renderFileList();
     resetControls();
     $("exportBtn").disabled = false;
+    $("fsBtn").disabled = false;
+    content.classList.remove("sheet-mode");
+    state.sheetPlain = null;
     content.innerHTML = `<div class="empty">${escapeHtml(t("viewer.loading"))}</div>`;
     state.links = [];
     state.linkStatus = "loading";
@@ -336,7 +375,7 @@
           return;
       }
       if (myId !== state.renderId) return;
-      if (ext !== "pdf") collectLinksFromDom();
+      if (ext !== "pdf") { linkifyText(content); collectLinksFromDom(); }
       state.linkStatus = "done";
       renderLinkList();
     } catch (err) {
@@ -388,9 +427,16 @@
       if (myId === state.renderId) runPdfSearch(); // 로딩 중에도 검색 결과 갱신
 
       const annots = await page.getAnnotations();
+      const annotated = [];
       annots.forEach((a) => {
-        if (a.subtype === "Link" && a.url) state.links.push({ label: t("links.pageLink", { p }), url: a.url });
+        if (a.subtype !== "Link" || !a.url) return;
+        state.links.push({ label: t("links.pageLink", { p }), url: a.url });
+        const [x1, y1, x2, y2] = viewport.convertToViewportRectangle(a.rect);
+        const box = { left: Math.min(x1, x2), top: Math.min(y1, y2), width: Math.abs(x2 - x1), height: Math.abs(y2 - y1) };
+        annotated.push(box);
+        addPdfLink(wrap, canvas, a.url, box);
       });
+      addPdfTextLinks(wrap, canvas, state.pdfPages[p - 1], annotated);
     }
     dedupeLinks();
   }
@@ -416,42 +462,133 @@
     state.rawText = content.innerText;
   }
 
+  // ---------- 엑셀: 실제 엑셀처럼 열 머리글(A,B,C)·행 번호·수식 입력줄·아래쪽 시트 탭 ----------
+  const XL_MAX_ROWS = 3000, XL_MAX_COLS = 200;
   async function renderSheet(file, ext) {
     const buf = await file.arrayBuffer();
     let wb;
     if (ext === "csv") {
       wb = XLSX.read(decodeText(new Uint8Array(buf)), { type: "string" });
     } else {
-      wb = XLSX.read(buf, { type: "array", cellHTML: false });
+      wb = XLSX.read(buf, { type: "array", cellHTML: false, cellFormula: true, cellDates: false, sheetStubs: true, cellStyles: true });
     }
-    const parts = [];
-    wb.SheetNames.forEach((name) => {
-      parts.push(`<h3>${escapeHtml(name)}</h3>`);
-      parts.push(sheetToHtmlWithLinks(wb.Sheets[name]));
+    const hidden = (i) => wb.Workbook && wb.Workbook.Sheets && wb.Workbook.Sheets[i] && wb.Workbook.Sheets[i].Hidden;
+    const names = wb.SheetNames.filter((_, i) => !hidden(i));
+    if (!names.length) names.push(wb.SheetNames[0]);
+
+    // 내보내기용: 모든 시트를 단순 표로 (머리글·행 번호 제외)
+    const plain = document.createElement("div");
+    plain.innerHTML = DOMPurify.sanitize(names.map((n) => `<h3>${escapeHtml(n)}</h3>${XLSX.utils.sheet_to_html(wb.Sheets[n], { header: "", footer: "" })}`).join(""));
+    plain.querySelectorAll("table").forEach((tb) => tb.removeAttribute("id"));
+    state.sheetPlain = plain;
+
+    content.classList.add("sheet-mode");
+    content.innerHTML = `<div class="xl-bar"><span class="addr">A1</span><span class="fx">fx</span><span class="val"></span></div>
+      <div class="xl-grid"></div>
+      <div class="xl-tabs" role="tablist"></div>`;
+    const tabs = content.querySelector(".xl-tabs");
+    names.forEach((name, i) => {
+      const b = document.createElement("button");
+      b.className = "xl-tab" + (i === 0 ? " active" : "");
+      b.textContent = name;
+      b.onclick = () => {
+        tabs.querySelectorAll(".xl-tab").forEach((x) => x.classList.toggle("active", x === b));
+        showSheet(wb.Sheets[name]);
+        const q = $("docSearch").value.trim();
+        if (q) $("docSearch").dispatchEvent(new Event("input"));
+      };
+      tabs.appendChild(b);
     });
-    content.innerHTML = DOMPurify.sanitize(parts.join(""), { ADD_ATTR: ["target", "rel"] });
-    state.rawText = content.innerText;
+    showSheet(wb.Sheets[names[0]]);
   }
 
-  // 셀 하이퍼링크를 살려서 표 생성
-  function sheetToHtmlWithLinks(ws) {
-    if (!ws || !ws["!ref"]) return `<p>${escapeHtml(t("viewer.emptySheet"))}</p>`;
-    const range = XLSX.utils.decode_range(ws["!ref"]);
-    let html = "<table>";
-    for (let r = range.s.r; r <= range.e.r; r++) {
-      html += "<tr>";
-      for (let c = range.s.c; c <= range.e.c; c++) {
-        const cell = ws[XLSX.utils.encode_cell({ r, c })];
-        let text = cell ? escapeHtml(String(cell.w ?? cell.v ?? "")) : "";
-        if (cell && cell.l && cell.l.Target) {
-          const target = escapeHtml(cell.l.Target);
-          text = `<a href="${target}" target="_blank" rel="noopener noreferrer">${text || target}</a>`;
+  function colName(c) { let s = ""; c++; while (c > 0) { const m = (c - 1) % 26; s = String.fromCharCode(65 + m) + s; c = Math.floor((c - 1) / 26); } return s; }
+
+  function showSheet(ws) {
+    const grid = content.querySelector(".xl-grid");
+    const bar = content.querySelector(".xl-bar");
+    grid.scrollTop = grid.scrollLeft = 0;
+    const ref = ws && ws["!ref"] ? XLSX.utils.decode_range(ws["!ref"]) : { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } };
+    const lastR = Math.min(ref.e.r, XL_MAX_ROWS - 1), lastC = Math.min(ref.e.c, XL_MAX_COLS - 1);
+    // 엑셀처럼 빈 칸도 조금 더 보여 줌
+    const nRows = Math.max(lastR + 1 + 5, 40), nCols = Math.max(lastC + 1 + 2, 12);
+    const cols = (ws && ws["!cols"]) || [], rows = (ws && ws["!rows"]) || [];
+    const colW = (c) => { const ci = cols[c]; if (ci && ci.hidden) return 0; if (ci && ci.wpx) return ci.wpx; if (ci && ci.wch) return Math.round(ci.wch * 7 + 5); if (ci && ci.width) return Math.round(ci.width * 7); return 72; };
+
+    // 병합 셀
+    const span = new Map(), covered = new Set();
+    ((ws && ws["!merges"]) || []).forEach((m) => {
+      span.set(m.s.r + ":" + m.s.c, { rs: m.e.r - m.s.r + 1, cs: m.e.c - m.s.c + 1 });
+      for (let r = m.s.r; r <= m.e.r; r++) for (let c = m.s.c; c <= m.e.c; c++) if (r !== m.s.r || c !== m.s.c) covered.add(r + ":" + c);
+    });
+
+    let total = 44;
+    for (let c = 0; c < nCols; c++) total += colW(c);
+    // 표 전체 너비를 고정해야 화면 폭에 맞춰 칸이 찌그러지지 않음 (가로 스크롤)
+    let h = `<table style="width:${total}px"><colgroup><col style="width:44px">`;
+    for (let c = 0; c < nCols; c++) h += `<col style="width:${colW(c)}px">`;
+    h += `</colgroup><thead><tr><th class="corner"></th>`;
+    for (let c = 0; c < nCols; c++) h += `<th data-c="${c}">${colName(c)}</th>`;
+    h += `</tr></thead><tbody>`;
+    for (let r = 0; r < nRows; r++) {
+      const ri = rows[r];
+      if (ri && ri.hidden) continue;
+      const hpx = ri && (ri.hpx || (ri.hpt && ri.hpt * 4 / 3));
+      h += `<tr${hpx ? ` style="height:${Math.round(hpx)}px"` : ""}><th data-r="${r}">${r + 1}</th>`;
+      for (let c = 0; c < nCols; c++) {
+        const key = r + ":" + c;
+        if (covered.has(key)) continue;
+        const cell = ws && r <= lastR && c <= lastC ? ws[XLSX.utils.encode_cell({ r, c })] : null;
+        const sp = span.get(key);
+        const attrs = sp ? `${sp.rs > 1 ? ` rowspan="${sp.rs}"` : ""}${sp.cs > 1 ? ` colspan="${sp.cs}"` : ""}` : "";
+        let cls = "", text = "";
+        if (cell) {
+          text = String(cell.w ?? cell.v ?? "");
+          if (cell.t === "n" || cell.t === "d") cls = "num";
+          else if (cell.t === "b" || cell.t === "e") cls = "ctr";
         }
-        html += `<td>${text}</td>`;
+        let html = escapeHtml(text);
+        if (cell && cell.l && cell.l.Target && isSafeUrl(cell.l.Target)) {
+          html = `<a href="${escapeHtml(cell.l.Target)}">${html || escapeHtml(cell.l.Target)}</a>`;
+        }
+        h += `<td data-r="${r}" data-c="${c}"${cls ? ` class="${cls}"` : ""}${attrs}>${html}</td>`;
       }
-      html += "</tr>";
+      h += `</tr>`;
     }
-    return html + "</table>";
+    h += `</tbody></table>`;
+    grid.innerHTML = DOMPurify.sanitize(h);
+    grid.querySelector("table").style.zoom = state.zoom;
+    linkifyText(grid);
+
+    const note = content.querySelector(".xl-note");
+    if (note) note.remove();
+    if (ref.e.r >= XL_MAX_ROWS || ref.e.c >= XL_MAX_COLS) {
+      const n = document.createElement("div");
+      n.className = "xl-note";
+      n.textContent = t("sheet.truncated", { rows: XL_MAX_ROWS, cols: XL_MAX_COLS });
+      grid.before(n);
+    }
+
+    // 셀 선택 → 수식 입력줄에 주소와 값/수식 표시
+    const select = (td) => {
+      grid.querySelectorAll("td.sel").forEach((x) => x.classList.remove("sel"));
+      grid.querySelectorAll("th.hl").forEach((x) => x.classList.remove("hl"));
+      td.classList.add("sel");
+      const r = +td.dataset.r, c = +td.dataset.c;
+      grid.querySelector(`thead th[data-c="${c}"]`)?.classList.add("hl");
+      grid.querySelector(`tbody th[data-r="${r}"]`)?.classList.add("hl");
+      const cell = ws && ws[XLSX.utils.encode_cell({ r, c })];
+      bar.querySelector(".addr").textContent = colName(c) + (r + 1);
+      bar.querySelector(".val").textContent = cell ? (cell.f ? "=" + cell.f : String(cell.v ?? "")) : "";
+    };
+    grid.onclick = (e) => {
+      if (e.target.closest("a")) return; // 링크는 바로 열기
+      const td = e.target.closest("td[data-r]");
+      if (td) select(td);
+    };
+    const first = grid.querySelector('td[data-r="0"][data-c="0"]');
+    if (first) select(first);
+    state.rawText = grid.innerText;
   }
 
   async function renderMarkdown(file) {
@@ -492,6 +629,76 @@
     }
   }
 
+  // ---------- 본문 속 주소를 파란 링크로 (https://…, www.…, 이메일) ----------
+  const URL_RE = /(https?:\/\/[^\s<>"'`]+|www\.[^\s<>"'`]+\.[^\s<>"'`]+|[\w.+-]+@[\w-]+(?:\.[\w-]+)+)/gi;
+  function trimUrl(u) { return u.replace(/[).,;:!?\]}'"’”]+$/, ""); }
+  function hrefOf(u) {
+    if (/^https?:\/\//i.test(u)) return u;
+    if (/^www\./i.test(u)) return "https://" + u;
+    if (u.includes("@")) return "mailto:" + u;
+    return u;
+  }
+  function linkifyText(root) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => n.parentNode && n.parentNode.closest && n.parentNode.closest("a, script, style, th, .xl-bar, .xl-tabs, textarea")
+        ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+    });
+    const nodes = [];
+    while (walker.nextNode()) if (URL_RE.test(walker.currentNode.nodeValue)) nodes.push(walker.currentNode);
+    for (const node of nodes) {
+      const text = node.nodeValue;
+      const frag = document.createDocumentFragment();
+      let last = 0;
+      text.replace(URL_RE, (m, _g, idx) => {
+        const u = trimUrl(m);
+        const href = hrefOf(u);
+        if (!isSafeUrl(href)) return m;
+        frag.appendChild(document.createTextNode(text.slice(last, idx)));
+        const a = document.createElement("a");
+        a.href = href;
+        a.textContent = u;
+        frag.appendChild(a);
+        last = idx + u.length;
+        return m;
+      });
+      if (!last) continue;
+      frag.appendChild(document.createTextNode(text.slice(last)));
+      node.parentNode.replaceChild(frag, node);
+    }
+  }
+
+  function addPdfLink(wrap, canvas, url, box) {
+    if (!isSafeUrl(url)) return;
+    const a = document.createElement("a");
+    a.className = "pdf-link";
+    a.href = url;
+    a.title = url;
+    a.style.left = (box.left / canvas.width * 100) + "%";
+    a.style.top = (box.top / canvas.height * 100) + "%";
+    a.style.width = (box.width / canvas.width * 100) + "%";
+    a.style.height = (box.height / canvas.height * 100) + "%";
+    wrap.appendChild(a);
+  }
+
+  // PDF 본문에 글자로만 적힌 주소도 링크로 (이미 링크가 걸린 자리는 건너뜀)
+  function addPdfTextLinks(wrap, canvas, pg, annotated) {
+    if (!pg || !pg.text) return;
+    const overlaps = (b) => annotated.some((a) => b.left < a.left + a.width && a.left < b.left + b.width && b.top < a.top + a.height && a.top < b.top + b.height);
+    for (const m of pg.text.matchAll(URL_RE)) {
+      const u = trimUrl(m[0]);
+      const href = hrefOf(u);
+      const s0 = m.index, e0 = m.index + u.length;
+      for (const it of pg.items) {
+        const a = Math.max(s0, it.start), b = Math.min(e0, it.start + it.len);
+        if (a >= b || !it.w) continue;
+        const fa = charRatio(it, a - it.start), fb = charRatio(it, b - it.start);
+        const box = { left: it.x + it.w * fa, top: it.y, width: it.w * (fb - fa), height: it.h };
+        if (!overlaps(box)) addPdfLink(wrap, canvas, href, box);
+      }
+      state.links.push({ label: u, url: href });
+    }
+  }
+
   // ---------- 링크 추출 (HTML로 렌더된 문서) ----------
   function collectLinksFromDom() {
     content.querySelectorAll("a[href]").forEach((a) => {
@@ -514,6 +721,7 @@
 
   function renderLinkList() {
     const box = $("linkList");
+    if (!box) return; // 링크 목록 패널은 없앴음: 링크는 본문에서 파랗게 표시하고 바로 열림
     if (state.linkStatus === "idle") { box.innerHTML = `<div class="empty">${escapeHtml(t("links.waiting"))}</div>`; return; }
     if (state.linkStatus === "loading") { box.innerHTML = `<div class="empty">${escapeHtml(t("links.finding"))}</div>`; return; }
     if (state.linkStatus === "failed") { box.innerHTML = `<div class="empty">${escapeHtml(t("links.failed"))}</div>`; return; }
@@ -550,11 +758,10 @@
   function hostOf(url) {
     try { return new URL(url).hostname; } catch { return ""; }
   }
+  // 링크는 확인 창 없이 바로 엶 (http/https/mailto/tel 만 허용). 앱에서는 기본 브라우저·메일·전화 앱으로 넘어감
   function openExternal(url) {
     if (!isSafeUrl(url)) { alert(t("alert.badAddress")); return; }
-    if (confirm(t("confirm.external", { url }))) {
-      window.open(url, "_blank", "noopener,noreferrer");
-    }
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   // 본문 안의 모든 링크는 기본 동작 대신 앱의 확인 창을 거치게 함
@@ -584,11 +791,27 @@
       : t("search.noMatch");
   });
 
+  // ---------- 전체 화면 보기 (뒤로가기 버튼으로도 닫힘) ----------
+  function enterFullscreen() {
+    if (document.body.classList.contains("fs") || !state.current) return;
+    document.body.classList.add("fs");
+    history.pushState({ fs: true }, "");
+  }
+  function exitFullscreen() { document.body.classList.remove("fs"); }
+  $("fsBtn").onclick = enterFullscreen;
+  $("fsClose").onclick = () => { if (history.state && history.state.fs) history.back(); else exitFullscreen(); };
+  window.addEventListener("popstate", () => exitFullscreen());
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && document.body.classList.contains("fs")) $("fsClose").click(); });
+  $("fsIn").onclick = () => $("zoomIn").click();
+  $("fsOut").onclick = () => $("zoomOut").click();
+
   // ---------- 확대/축소 & 테마 ----------
   $("zoomIn").onclick = () => { state.zoom = Math.min(state.zoom + 0.2, 3); applyZoom(); };
   $("zoomOut").onclick = () => { state.zoom = Math.max(state.zoom - 0.2, 0.6); applyZoom(); };
   function applyZoom() {
     if (state.current && extOf(state.current.name) === "pdf") { openFile(state.current); return; }
+    const xl = content.querySelector(".xl-grid table");
+    if (xl) xl.style.zoom = state.zoom; // 엑셀 표는 칸 너비까지 같이 확대
     content.style.fontSize = `${state.zoom * 100}%`;
   }
   $("darkToggle").onclick = () => {
@@ -1019,6 +1242,7 @@
     while (walker.nextNode()) {
       const parent = walker.currentNode.parentNode;
       if (parent && /^(SCRIPT|STYLE)$/.test(parent.nodeName)) continue;
+      if (parent && parent.closest && parent.closest(".xl-grid th, .xl-bar, .xl-tabs")) continue;
       nodes.push(walker.currentNode);
     }
     for (const node of nodes) {
@@ -1059,7 +1283,7 @@
   async function buildModel() {
     const file = state.current;
     const ext = extOf(file.name);
-    const blocks = ext === "pdf" ? await pdfBlocks(file) : domBlocks(content);
+    const blocks = ext === "pdf" ? await pdfBlocks(file) : domBlocks(state.sheetPlain || content);
     return { title: baseName(file.name), blocks };
   }
 

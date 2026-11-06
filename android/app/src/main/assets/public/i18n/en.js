@@ -78,6 +78,8 @@ window.I18N.en = {
   "code.cam.error": "Could not start the camera: {msg}",
   "code.cam.torch": "🔦 Flash",
   "open.nativeFail": "Could not open the document: {msg}",
+  "header.fullscreen": "⛶ Full screen",
+  "sheet.truncated": "This sheet is large; showing the first {rows} rows and {cols} columns.",
   "header.export": "📤 Export",
   "export.title": "📤 Export · Print · Send",
   "export.close": "Close",
