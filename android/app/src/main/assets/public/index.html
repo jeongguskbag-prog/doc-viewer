@@ -42,13 +42,31 @@
   /* PDF 링크: 캔버스 위 투명 상자. screen 합성으로 검은 글자를 파랗게 보이게 함 */
   #content a.pdf-link { position: absolute; display: block; background: #2563eb; mix-blend-mode: screen; border-bottom: 2px solid #2563eb; text-decoration: none; }
 
-  /* ---------- 전체 화면 보기 ---------- */
+  /* ---------- 문서 창 오른쪽 위 도구 (전체 보기·번역) / 전체 화면 ---------- */
+  #viewTools { position: sticky; top: 8px; z-index: 20; display: flex; justify-content: flex-end; gap: 6px; height: 0; margin: 0 auto; max-width: 900px; pointer-events: none; }
+  #viewTools > * { pointer-events: auto; }
+  #viewTools button { height: 36px; border-radius: 18px; padding: 0 12px; background: rgba(17,24,39,.78); color: #fff; border: 0; font-size: 13px; box-shadow: 0 2px 6px rgba(0,0,0,.2); transform: translate(-8px, 8px); }
+  #viewTools .fs-only { display: none; }
+  body.fs #viewTools { position: fixed; top: 10px; right: 10px; left: 10px; height: auto; max-width: none; flex-wrap: wrap; }
+  body.fs #viewTools button { transform: none; min-width: 40px; }
+  body.fs #viewTools .fs-only { display: inline-block; }
+  body.fs #viewTools .nofs { display: none; }
+  #trMenu { position: absolute; right: 8px; top: 50px; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 6px; min-width: 180px; }
+  body.fs #trMenu { top: 46px; right: 0; }
+  #trMenu button { display: block; width: 100%; text-align: left; background: transparent; color: var(--text); border: 0; border-radius: 6px; padding: 9px 10px; font-size: 14px; transform: none; box-shadow: none; height: auto; }
+  #trMenu button:hover, #trMenu button.on { background: var(--bg); }
+  #trMenu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
+  #trStatus { font-size: 12px; color: var(--muted); padding: 4px 10px; }
+  .tr-pages { max-width: 820px; margin: 0 auto; }
+  .tr-page { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 16px 18px; margin-bottom: 14px; line-height: 1.6; }
+  .tr-page h4 { margin: 0 0 8px; font-size: 12px; color: var(--muted); font-weight: 600; }
+  .tr-page p { margin: 0 0 6px; }
   #fsBar { display: none; }
   body.fs header, body.fs main > aside { display: none; }
   body.fs #viewer { position: fixed; inset: 0; z-index: 50; padding: 0; background: var(--bg); overflow: auto; }
   body.fs #content { max-width: none; min-height: 100%; border: 0; border-radius: 0; margin: 0; }
-  body.fs #fsBar { display: flex; gap: 6px; position: fixed; top: 10px; right: 10px; z-index: 60; }
-  #fsBar button { background: rgba(17,24,39,.72); color: #fff; border: 0; border-radius: 18px; min-width: 40px; height: 36px; font-size: 15px; backdrop-filter: blur(4px); }
+  body.fs #content, body.fs #content.sheet-mode { padding-top: 56px; } /* 위쪽 버튼 줄에 가리지 않게 */
+
 
   /* ---------- 엑셀 보기 (열 머리글·행 번호·수식 입력줄·시트 탭) ---------- */
   #content.sheet-mode { padding: 0; max-width: none; display: flex; flex-direction: column; height: calc(100vh - 150px); min-height: 60vh; overflow: hidden; }
@@ -121,7 +139,6 @@
   <button class="ghost" id="zoomIn" disabled>A+</button>
   <button class="ghost" id="codeBtn" data-i18n="header.code">🔲 Codes</button>
   <button class="ghost" id="exportBtn" data-i18n="header.export" disabled>📤 Export</button>
-  <button class="ghost" id="fsBtn" data-i18n="header.fullscreen" disabled>⛶ Full screen</button>
   <button class="ghost" id="darkToggle" data-i18n="header.theme">🌓 Theme</button>
   <select class="lang" id="langSel" aria-label="Language">
     <option value="ko">한국어</option>
@@ -203,10 +220,23 @@
   </aside>
 
   <section id="viewer">
-    <div id="fsBar">
-      <button id="fsOut" aria-label="zoom out">A−</button>
-      <button id="fsIn" aria-label="zoom in">A+</button>
-      <button id="fsClose" aria-label="close">✕</button>
+    <div id="viewTools" hidden>
+      <button id="trBtn" data-i18n="tr.button">🌐 Translate</button>
+      <button class="fs-only" id="fsExport" data-i18n="fs.export">📤 Export</button>
+      <button class="fs-only" id="fsOut" aria-label="zoom out">A−</button>
+      <button class="fs-only" id="fsIn" aria-label="zoom in">A+</button>
+      <button class="nofs" id="fsBtn" data-i18n="view.full">⛶ Full view</button>
+      <button class="fs-only" id="fsClose" aria-label="close">✕</button>
+      <div id="trMenu" hidden>
+        <button data-tr="ko">한국어</button>
+        <button data-tr="en">English</button>
+        <button data-tr="zh-CN">中文 (简体)</button>
+        <button data-tr="ja">日本語</button>
+        <button data-tr="" data-i18n="tr.original">Original</button>
+        <hr>
+        <button id="trSettings" data-i18n="tr.settings">⚙ Translation engine</button>
+        <div id="trStatus"></div>
+      </div>
     </div>
     <div id="content"><div class="empty"><span data-i18n="viewer.pick">Select a file on the left.</span><br><span data-i18n="viewer.supported">Supported: PDF, HWP, DOCX, XLSX, CSV, MD, TXT, images</span></div></div>
   </section>
@@ -356,7 +386,10 @@
     renderFileList();
     resetControls();
     $("exportBtn").disabled = false;
-    $("fsBtn").disabled = false;
+    $("viewTools").hidden = false;
+    $("trMenu").hidden = true;
+    state.trLang = "";
+    updateTrButton();
     content.classList.remove("sheet-mode");
     state.sheetPlain = null;
     content.innerHTML = `<div class="empty">${escapeHtml(t("viewer.loading"))}</div>`;
@@ -504,6 +537,7 @@
       b.onclick = () => {
         tabs.querySelectorAll(".xl-tab").forEach((x) => x.classList.toggle("active", x === b));
         showSheet(wb.Sheets[name]);
+        if (state.trLang) translateDoc(state.trLang);
         const q = $("docSearch").value.trim();
         if (q) $("docSearch").dispatchEvent(new Event("input"));
       };
@@ -883,6 +917,7 @@
 
   // ---------- 전체 화면 보기 (뒤로가기 버튼으로도 닫힘) ----------
   function enterFullscreen() {
+    $("trMenu").hidden = true;
     if (document.body.classList.contains("fs") || !state.current) return;
     document.body.classList.add("fs");
     history.pushState({ fs: true }, "");
@@ -893,7 +928,194 @@
   window.addEventListener("popstate", () => exitFullscreen());
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && document.body.classList.contains("fs")) $("fsClose").click(); });
   $("fsIn").onclick = () => $("zoomIn").click();
+  $("fsExport").onclick = () => $("exportBtn").click();
   $("fsOut").onclick = () => $("zoomOut").click();
+
+  // ---------- 문서 번역 (한국어·영어·중국어·일본어) ----------
+  // 기본: MyMemory 무료 번역(가입 없음, 하루 약 5천 자). 설정에서 Google 번역 API 키를 넣으면 Google 사용.
+  const TR_LANGS = { ko: "한국어", en: "English", "zh-CN": "中文", ja: "日本語" };
+  const trCache = new Map();
+  let trJob = 0;
+  const trKey = () => { try { return localStorage.getItem("viewer.trKey") || ""; } catch { return ""; } };
+
+  function updateTrButton() {
+    $("trBtn").textContent = state.trLang ? "🌐 " + TR_LANGS[state.trLang] : t("tr.button");
+    $("trMenu").querySelectorAll("button[data-tr]").forEach((b) => b.classList.toggle("on", b.dataset.tr === (state.trLang || "")));
+  }
+  function trStatus(msg) { $("trStatus").textContent = msg || ""; }
+
+  // 글자 종류로 원문 언어 추정 (MyMemory 는 원문 언어를 지정해야 함)
+  function guessLang(s) {
+    if (/[\uac00-\ud7a3]/.test(s)) return "ko";
+    if (/[\u3040-\u30ff]/.test(s)) return "ja";
+    if (/[\u4e00-\u9fff]/.test(s)) return "zh-CN";
+    return "en";
+  }
+  const needsTr = (s, target) => /\p{L}/u.test(s) && !/^\s*(https?:\/\/|www\.|[\w.+-]+@)\S+\s*$/i.test(s) && guessLang(s) !== target;
+
+  async function trGoogle(texts, target) {
+    const out = [];
+    for (let i = 0; i < texts.length;) {
+      const batch = [];
+      let len = 0;
+      while (i < texts.length && batch.length < 100 && len + texts[i].length < 4500) { len += texts[i].length; batch.push(texts[i++]); }
+      if (!batch.length) batch.push(texts[i++]);
+      const res = await fetch("https://translation.googleapis.com/language/translate/v2?key=" + encodeURIComponent(trKey()), {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ q: batch, target, format: "text" }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((j.error && j.error.message) || "HTTP " + res.status);
+      j.data.translations.forEach((x) => out.push(x.translatedText));
+    }
+    return out;
+  }
+
+  async function trMyMemoryOne(text, target) {
+    const src = guessLang(text);
+    if (src === target) return text;
+    // MyMemory 는 한 번에 500바이트까지: 문장 단위로 나눠 보냄
+    const parts = [];
+    let cur = "";
+    for (const piece of text.split(/(?<=[.!?。！？\n])\s*/)) {
+      if (new TextEncoder().encode(cur + piece).length > 450 && cur) { parts.push(cur); cur = ""; }
+      cur += (cur ? " " : "") + piece;
+    }
+    if (cur) parts.push(cur);
+    const done = [];
+    for (const part of parts) {
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(part)}&langpair=${src}|${target}`;
+      const res = await fetch(url);
+      const j = await res.json().catch(() => ({}));
+      const txt = j && j.responseData && j.responseData.translatedText;
+      if (!res.ok || !txt || j.quotaFinished || /MYMEMORY WARNING|QUERY LENGTH LIMIT/i.test(txt)) {
+        throw new Error(j.quotaFinished || /MYMEMORY WARNING/i.test(txt || "") ? t("tr.quota") : (j.responseDetails || "HTTP " + res.status));
+      }
+      done.push(txt);
+    }
+    return done.join(" ");
+  }
+
+  async function translateTexts(texts, target, onProgress) {
+    const todo = [...new Set(texts.filter((s) => needsTr(s, target) && !trCache.has(target + "\u0000" + s)))];
+    let n = 0;
+    if (todo.length) {
+      if (trKey()) {
+        const out = await trGoogle(todo, target);
+        todo.forEach((s, i) => trCache.set(target + "\u0000" + s, out[i]));
+        onProgress(1);
+      } else {
+        // 동시에 4개씩
+        let idx = 0, failed = null;
+        const worker = async () => {
+          while (idx < todo.length && !failed) {
+            const s = todo[idx++];
+            try { trCache.set(target + "\u0000" + s, await trMyMemoryOne(s, target)); }
+            catch (e) { failed = e; }
+            onProgress(++n / todo.length);
+          }
+        };
+        await Promise.all([worker(), worker(), worker(), worker()]);
+        if (failed) throw failed;
+      }
+    }
+    return texts.map((s) => trCache.get(target + "\u0000" + s) ?? s);
+  }
+
+  // 화면의 글자 마디(text node)를 모아 번역문으로 바꿈. 원문은 노드에 보관해 되돌릴 수 있게 함
+  function textNodesOf(root) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => n.parentNode && n.parentNode.closest && n.parentNode.closest("script, style, .xl-grid th, .xl-bar, .xl-tabs, .tr-pages, #viewTools")
+        ? NodeFilter.FILTER_REJECT : (n.__orig != null || n.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT),
+    });
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    return nodes;
+  }
+
+  function restoreOriginal() {
+    textNodesOf(content).forEach((n) => { if (n.__orig != null) { n.nodeValue = n.__orig; n.__orig = null; } });
+    content.querySelectorAll(".tr-pages").forEach((el) => el.remove());
+    content.querySelectorAll(".pdf-wrap").forEach((el) => { el.hidden = false; });
+    if (content.classList.contains("sheet-mode")) state.rawText = content.querySelector(".xl-grid").innerText;
+    else if (!content.querySelector(".pdf-wrap") && state.rawText != null) state.rawText = content.innerText;
+  }
+
+  async function translateDoc(target) {
+    const job = ++trJob;
+    clearTextHits(); $("docSearch").value = ""; $("matchInfo").textContent = "";
+    restoreOriginal();
+    state.trLang = target;
+    updateTrButton();
+    if (!target) { trStatus(""); return; }
+    const pct = (f) => { const m = t("tr.progress", { p: Math.round(f * 100) }); trStatus(m); if (job === trJob) $("trBtn").textContent = "🌐 " + m; };
+    pct(0);
+    try {
+      if (content.querySelector(".pdf-wrap")) {
+        // PDF 는 그림(캔버스)이라 글자를 바꿀 수 없음 → 페이지별 번역문을 대신 보여 줌
+        const pdf = await pdfjsLib.getDocument({ data: await state.current.arrayBuffer(), ...PDF_OPTS }).promise;
+        const pages = [];
+        for (let p = 1; p <= pdf.numPages; p++) pages.push(await pageLines(await pdf.getPage(p)));
+        const flat = pages.flat();
+        if (!flat.length) throw new Error(t("tr.noText"));
+        const out = await translateTexts(flat, target, pct);
+        if (job !== trJob) return;
+        let k = 0;
+        const box = document.createElement("div");
+        box.className = "tr-pages";
+        box.innerHTML = pages.map((lines, i) => `<div class="tr-page"><h4>${escapeHtml(t("code.page", { n: i + 1 }))}</h4>${lines.map(() => `<p>${escapeHtml(out[k++])}</p>`).join("")}</div>`).join("");
+        content.querySelectorAll(".pdf-wrap").forEach((el) => { el.hidden = true; });
+        content.appendChild(box);
+        linkifyText(box);
+      } else {
+        const nodes = textNodesOf(content);
+        const texts = nodes.map((n) => n.nodeValue);
+        if (!texts.some((s) => /\p{L}/u.test(s))) throw new Error(t("tr.noText"));
+        const out = await translateTexts(texts.map((s) => s.trim()), target, pct);
+        if (job !== trJob) return;
+        nodes.forEach((n, i) => {
+          const orig = n.nodeValue;
+          const lead = orig.match(/^\s*/)[0], tail = orig.match(/\s*$/)[0];
+          if (out[i] !== orig.trim()) { n.__orig = orig; n.nodeValue = lead + out[i] + tail; }
+        });
+        state.rawText = content.innerText;
+      }
+      trStatus(trKey() ? t("tr.doneGoogle") : t("tr.doneFree"));
+      updateTrButton();
+    } catch (e) {
+      if (job !== trJob) return;
+      restoreOriginal();
+      state.trLang = "";
+      updateTrButton();
+      trStatus(t("tr.fail", { msg: e && e.message ? e.message : String(e) }));
+      $("trMenu").hidden = false;
+    }
+  }
+
+  $("trBtn").onclick = (e) => { e.stopPropagation(); $("trMenu").hidden = !$("trMenu").hidden; };
+  document.addEventListener("click", (e) => { if (!e.target.closest("#viewTools")) $("trMenu").hidden = true; });
+  $("trMenu").querySelectorAll("button[data-tr]").forEach((b) => {
+    b.onclick = () => {
+      const target = b.dataset.tr;
+      if (target) {
+        let ok = false;
+        try { ok = localStorage.getItem("viewer.trConsent") === "1"; } catch { /* 무시 */ }
+        if (!ok) {
+          if (!confirm(t("tr.consent", { engine: trKey() ? "Google" : "MyMemory" }))) return;
+          try { localStorage.setItem("viewer.trConsent", "1"); } catch { /* 무시 */ }
+        }
+      }
+      $("trMenu").hidden = true;
+      translateDoc(target);
+    };
+  });
+  $("trSettings").onclick = () => {
+    const v = prompt(t("tr.keyPrompt"), trKey());
+    if (v === null) return;
+    try { if (v.trim()) localStorage.setItem("viewer.trKey", v.trim()); else localStorage.removeItem("viewer.trKey"); } catch { /* 무시 */ }
+    trCache.clear();
+    trStatus(v.trim() ? t("tr.engineGoogle") : t("tr.engineFree"));
+  };
 
   // ---------- 확대/축소 & 테마 ----------
   $("zoomIn").onclick = () => { state.zoom = Math.min(state.zoom + 0.2, 3); applyZoom(); };
@@ -1391,6 +1613,34 @@
     return [];
   }
 
+  const native = () => window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+  function blobToBase64(blob) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(String(r.result).split(",")[1] || "");
+      r.onerror = () => rej(r.error);
+      r.readAsDataURL(blob);
+    });
+  }
+  async function nativeIO(method, blob, name, extra) {
+    const data = blob ? await blobToBase64(blob) : undefined;
+    return window.Capacitor.nativePromise("NativeIO", method, { name, mime: ((blob && blob.type) || "application/octet-stream").split(";")[0], data, ...extra });
+  }
+  // 앱(WebView)에서는 <a download> 가 동작하지 않으므로 다운로드 폴더에 직접 저장
+  async function saveOutput(blob, name) {
+    if (native()) {
+      try {
+        const r = await nativeIO("save", blob, name);
+        setExportMsg(r && r.folder ? t("export.savedTo", { name: r.name, folder: r.folder }) : t("export.saved", { name }));
+      } catch (e) {
+        if (e && e.code === "CANCELLED") return;
+        throw e;
+      }
+      return;
+    }
+    saveBlob(blob, name);
+  }
+
   function saveBlob(blob, name) {
     const a = document.createElement("a");
     const url = URL.createObjectURL(blob);
@@ -1455,6 +1705,7 @@
       if (!model.blocks.length) throw new Error(t("export.noText"));
       html = ExportTools.toHtml(model);
     }
+    if (native()) { await window.Capacitor.nativePromise("NativeIO", "print", { html, name: baseName(state.current.name) }); return; }
     const frame = document.createElement("iframe");
     frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
     document.body.appendChild(frame);
@@ -1469,6 +1720,7 @@
   // 메일·공유: 기기가 파일 공유를 지원하면 공유 시트, 아니면 저장 후 메일 앱 열기
   async function sendCurrent(fmt) {
     const { blob, name } = await makeOutput(fmt);
+    if (native()) { await nativeIO("share", blob, name, { title: t("export.send") }); return; }
     const file = new File([blob], name, { type: blob.type });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try { await navigator.share({ files: [file], title: name }); return; }
@@ -1498,9 +1750,9 @@
   };
   $("exportClose").onclick = () => exportDialog.close();
   $("exportRun").onclick = () => runExport(async () => {
-    if ($("exportFormat").value === "pdf") { await printCurrent(); setExportMsg(t("export.pdfHint")); return; }
+    if ($("exportFormat").value === "pdf") { await printCurrent(); setExportMsg(t(native() ? "export.pdfHintApp" : "export.pdfHint")); return; }
     const { blob, name } = await makeOutput($("exportFormat").value);
-    saveBlob(blob, name);
+    await saveOutput(blob, name);
   });
   $("exportPrint").onclick = () => runExport(printCurrent);
   $("exportSend").onclick = () => {

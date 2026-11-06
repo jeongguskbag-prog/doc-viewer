@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(FileIntentPlugin.class); // 다른 앱에서 연 문서 받기
+        registerPlugin(NativeIOPlugin.class);   // 내보내기: 저장·공유·인쇄
         super.onCreate(savedInstanceState);
     }
 }
