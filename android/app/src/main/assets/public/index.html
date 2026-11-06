@@ -100,6 +100,18 @@
       <button class="ghost" id="readCurrent" data-i18n="code.readCurrent">Read from current document</button>
       <button class="ghost" id="readFileBtn" data-i18n="code.readFile">Read from image file</button>
       <input type="file" id="readFile" accept="image/*" hidden>
+      <button id="scanBtn" data-i18n="code.scanCamera">📷 Scan with camera</button>
+    </div>
+    <div id="scanBox" hidden style="margin-bottom:10px">
+      <div style="position:relative;background:#000;border-radius:8px;overflow:hidden">
+        <video id="scanVideo" playsinline muted autoplay style="display:block;width:100%;max-height:55vh;object-fit:cover"></video>
+        <div style="position:absolute;inset:18% 12%;border:3px solid rgba(255,255,255,.85);border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,.25);pointer-events:none"></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+        <button class="ghost" id="scanStop" data-i18n="code.scanStop">Stop scanning</button>
+        <button class="ghost" id="scanTorch" hidden data-i18n="code.cam.torch">🔦 Flash</button>
+        <span style="font-size:12px;color:var(--muted)" data-i18n="code.scanHint">Center the code in the frame.</span>
+      </div>
     </div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:8px" data-i18n="code.readHint">Finds QR codes and barcodes in images and PDF pages.</div>
     <div id="readResults"></div>
@@ -564,11 +576,14 @@
   const codeDialog = $("codeDialog");
   $("codeBtn").onclick = () => codeDialog.showModal();
   $("codeClose").onclick = () => codeDialog.close();
+  codeDialog.addEventListener("close", () => stopScan());
+  document.addEventListener("visibilitychange", () => { if (document.hidden) stopScan(); });
   document.querySelectorAll(".tabBtn").forEach((btn) => {
     btn.onclick = () => {
       document.querySelectorAll(".tabBtn").forEach((b) => { b.className = b === btn ? "tabBtn" : "tabBtn ghost"; });
       $("tabRead").hidden = btn.dataset.tab !== "read";
       $("tabMake").hidden = btn.dataset.tab !== "make";
+      if (btn.dataset.tab !== "read") stopScan();
     };
   });
 
@@ -653,6 +668,115 @@
     if (!f) return;
     try { showReadResults(await readImageFile(f, f.name), f.name); }
     catch (err) { $("readResults").innerHTML = `<div class="error">${escapeHtml(err.message)}</div>`; }
+  };
+
+  // ---------- 카메라 실시간 스캔 ----------
+  // 기기 내장 BarcodeDetector(빠름)를 먼저 쓰고, 없으면 CodeTools(zxing)로 프레임을 해석
+  const DETECTOR_FORMATS = {
+    qr_code: "QR Code", ean_13: "EAN-13", ean_8: "EAN-8", code_128: "Code 128", code_39: "Code 39",
+    code_93: "Code 93", codabar: "Codabar", data_matrix: "Data Matrix", itf: "ITF",
+    upc_a: "UPC-A", upc_e: "UPC-E", pdf417: "PDF417", aztec: "Aztec",
+  };
+  const scan = { stream: null, timer: 0, detector: null, canvas: null, torch: false };
+
+  async function getDetector() {
+    if (scan.detector !== null) return scan.detector;
+    scan.detector = false;
+    try {
+      if ("BarcodeDetector" in window) {
+        const supported = await BarcodeDetector.getSupportedFormats();
+        const formats = Object.keys(DETECTOR_FORMATS).filter((f) => supported.includes(f));
+        if (formats.length) scan.detector = new BarcodeDetector({ formats });
+      }
+    } catch { scan.detector = false; }
+    return scan.detector;
+  }
+
+  function stopScan() {
+    clearTimeout(scan.timer);
+    scan.timer = 0;
+    if (scan.stream) scan.stream.getTracks().forEach((tr) => tr.stop());
+    scan.stream = null;
+    scan.torch = false;
+    const v = $("scanVideo");
+    if (v) v.srcObject = null;
+    if ($("scanBox")) $("scanBox").hidden = true;
+    if ($("scanBtn")) $("scanBtn").hidden = false;
+  }
+
+  async function decodeFrame(video) {
+    const det = await getDetector();
+    if (det) {
+      try {
+        const codes = await det.detect(video);
+        if (codes.length) return { text: codes[0].rawValue, format: DETECTOR_FORMATS[codes[0].format] || codes[0].format };
+      } catch { /* 다음 프레임에서 다시 시도 */ }
+      return null;
+    }
+    // zxing 경로: 프레임을 최대 960px로 줄여 캔버스에 그린 뒤 해석
+    const w = video.videoWidth, h = video.videoHeight;
+    if (!w || !h) return null;
+    const k = Math.min(1, 960 / Math.max(w, h));
+    const c = scan.canvas || (scan.canvas = document.createElement("canvas"));
+    c.width = Math.round(w * k); c.height = Math.round(h * k);
+    c.getContext("2d", { willReadFrequently: true }).drawImage(video, 0, 0, c.width, c.height);
+    try { return CodeTools.readFromCanvas(c); } catch { return null; }
+  }
+
+  async function scanLoop() {
+    if (!scan.stream) return;
+    const video = $("scanVideo");
+    const r = video.readyState >= 2 ? await decodeFrame(video) : null;
+    if (!scan.stream) return;
+    if (r && r.text) {
+      stopScan();
+      if (navigator.vibrate) navigator.vibrate(80);
+      showReadResults([{ where: t("code.source.camera"), ...r }], t("code.source.camera"));
+      return;
+    }
+    scan.timer = setTimeout(scanLoop, 150);
+  }
+
+  function cameraErrorText(e) {
+    const name = e && e.name;
+    if (name === "NotAllowedError" || name === "SecurityError") return t("code.cam.denied");
+    if (name === "NotFoundError" || name === "OverconstrainedError") return t("code.cam.notFound");
+    return t("code.cam.error", { msg: (e && e.message) || String(e) });
+  }
+
+  $("scanBtn").onclick = async () => {
+    $("readResults").innerHTML = "";
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      $("readResults").innerHTML = `<div class="error">${escapeHtml(t("code.cam.unsupported"))}</div>`;
+      return;
+    }
+    stopScan();
+    try {
+      scan.stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      });
+    } catch (e) {
+      $("readResults").innerHTML = `<div class="error">${escapeHtml(cameraErrorText(e))}</div>`;
+      return;
+    }
+    const video = $("scanVideo");
+    video.srcObject = scan.stream;
+    $("scanBox").hidden = false;
+    $("scanBtn").hidden = true;
+    try { await video.play(); } catch { /* autoplay muted 로 재생됨 */ }
+    // 플래시 지원 기기에서만 버튼 표시
+    const track = scan.stream.getVideoTracks()[0];
+    const caps = track && track.getCapabilities ? track.getCapabilities() : {};
+    $("scanTorch").hidden = !caps.torch;
+    scanLoop();
+  };
+  $("scanStop").onclick = () => stopScan();
+  $("scanTorch").onclick = async () => {
+    const track = scan.stream && scan.stream.getVideoTracks()[0];
+    if (!track) return;
+    scan.torch = !scan.torch;
+    try { await track.applyConstraints({ advanced: [{ torch: scan.torch }] }); } catch { scan.torch = false; }
   };
 
   // 생성 탭: 형식 목록은 현재 언어로 다시 채움

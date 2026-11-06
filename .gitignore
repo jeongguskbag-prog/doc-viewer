@@ -9,3 +9,4 @@ android/.idea/
 .DS_Store
 *.keystore
 *.jks
+!android/app/debug.keystore
