@@ -80,6 +80,8 @@ window.I18N.ja = {
   "open.nativeFail": "文書を開けません: {msg}",
   "header.fullscreen": "⛶ 全画面",
   "sheet.truncated": "シートが大きいため、最初の{rows}行・{cols}列のみ表示します。",
+  "sheet.width": "幅",
+  "sheet.height": "高さ",
   "header.export": "📤 書き出し",
   "export.title": "📤 書き出し・印刷・送信",
   "export.close": "閉じる",

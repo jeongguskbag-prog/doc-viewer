@@ -59,7 +59,7 @@
   .xl-bar .val { padding: 6px 8px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .xl-grid { flex: 1; overflow: auto; background: #fff; -webkit-overflow-scrolling: touch; }
   #content .xl-grid table { border-collapse: separate; border-spacing: 0; table-layout: fixed; font: 13px Calibri, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; color: #000; }
-  #content .xl-grid td { border: 0; border-right: 1px solid #e1e1e1; border-bottom: 1px solid #e1e1e1; padding: 1px 4px; height: 21px; white-space: nowrap; overflow: hidden; background: #fff; vertical-align: bottom; }
+  #content .xl-grid td { border: 0; border-right: 1px solid #e1e1e1; border-bottom: 1px solid #e1e1e1; padding: 1px 4px; white-space: nowrap; overflow: hidden; background: #fff; vertical-align: bottom; }
   #content .xl-grid td.num { text-align: right; }
   #content .xl-grid td.ctr { text-align: center; }
   #content .xl-grid td.sel { outline: 2px solid #107c41; outline-offset: -2px; }
@@ -68,6 +68,16 @@
   #content .xl-grid tbody th { left: 0; }
   #content .xl-grid thead th.corner { left: 0; z-index: 3; }
   #content .xl-grid th.hl { background: #d3f0e0; color: #107c41; font-weight: 600; }
+  #content .xl-grid tbody tr { height: 22px; }
+  /* 칸 크기 조절 손잡이: 열 머리글 오른쪽 끝 / 행 번호 아래쪽 끝 (손가락으로도 잡히게 넉넉히) */
+  .xl-grid .rz { position: absolute; z-index: 4; touch-action: none; }
+  .xl-grid .rz-c { top: 0; right: 0; width: 14px; height: 100%; cursor: col-resize; }
+  .xl-grid .rz-r { left: 0; bottom: 0; height: 12px; width: 100%; cursor: row-resize; }
+  .xl-grid .rz::after { content: ""; position: absolute; background: #107c41; opacity: 0; }
+  .xl-grid .rz-c::after { right: 0; top: 0; bottom: 0; width: 3px; }
+  .xl-grid .rz-r::after { left: 0; right: 0; bottom: 0; height: 3px; }
+  .xl-grid .rz:hover::after, .xl-grid .rz.active::after { opacity: 1; }
+  .rz-tip { position: fixed; z-index: 70; background: #111827; color: #fff; font-size: 12px; padding: 3px 7px; border-radius: 4px; pointer-events: none; }
   .xl-note { padding: 6px 10px; font-size: 12px; color: #92400e; background: #fffbeb; border-bottom: 1px solid #fde68a; }
   .xl-tabs { display: flex; overflow-x: auto; background: #f3f3f3; border-top: 1px solid #c8c8c8; flex: 0 0 auto; }
   .xl-tab { background: transparent; color: #333; border: 0; border-right: 1px solid #d4d4d4; border-radius: 0; padding: 9px 16px; white-space: nowrap; font-size: 13px; }
@@ -502,6 +512,83 @@
     showSheet(wb.Sheets[names[0]]);
   }
 
+  // 열 머리글 오른쪽 끝을 끌면 열 너비, 행 번호 아래쪽 끝을 끌면 행 높이 조절. 열 경계 두 번 누르면 내용에 맞춤
+  function enableResize(grid, ws) {
+    const table = grid.querySelector("table");
+    let tip = null;
+    const showTip = (x, y, text) => {
+      if (!tip) { tip = document.createElement("div"); tip.className = "rz-tip"; document.body.appendChild(tip); }
+      tip.textContent = text;
+      tip.style.left = Math.min(x + 12, innerWidth - 90) + "px";
+      tip.style.top = Math.max(y - 32, 4) + "px";
+    };
+    const hideTip = () => { if (tip) { tip.remove(); tip = null; } };
+    const setColWidth = (c, w) => {
+      const col = table.querySelectorAll("col")[c + 1];
+      const old = parseFloat(col.style.width) || 0;
+      col.style.width = w + "px";
+      table.style.width = (parseFloat(table.style.width) + w - old) + "px";
+      ws.__colW[c] = w;
+    };
+
+    grid.onpointerdown = (e) => {
+      const hd = e.target.closest(".rz");
+      if (!hd) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const z = state.zoom || 1;
+      const th = hd.parentNode;
+      hd.classList.add("active");
+      hd.setPointerCapture(e.pointerId);
+      let move;
+      if (hd.classList.contains("rz-c")) {
+        const c = +th.dataset.c;
+        const w0 = parseFloat(table.querySelectorAll("col")[c + 1].style.width) || 72;
+        const x0 = e.clientX;
+        move = (ev) => {
+          const w = Math.max(16, Math.round(w0 + (ev.clientX - x0) / z));
+          setColWidth(c, w);
+          showTip(ev.clientX, ev.clientY, `${colName(c)} · ${t("sheet.width")} ${w}px`);
+        };
+      } else {
+        const tr = th.parentNode;
+        const r = +th.dataset.r;
+        const h0 = tr.getBoundingClientRect().height / z;
+        const y0 = e.clientY;
+        move = (ev) => {
+          const hgt = Math.max(16, Math.round(h0 + (ev.clientY - y0) / z));
+          tr.style.height = hgt + "px";
+          ws.__rowH[r] = hgt;
+          showTip(ev.clientX, ev.clientY, `${r + 1} · ${t("sheet.height")} ${hgt}px`);
+        };
+      }
+      const end = () => {
+        hd.classList.remove("active");
+        hd.removeEventListener("pointermove", move);
+        hd.removeEventListener("pointerup", end);
+        hd.removeEventListener("pointercancel", end);
+        hideTip();
+      };
+      hd.addEventListener("pointermove", move);
+      hd.addEventListener("pointerup", end);
+      hd.addEventListener("pointercancel", end);
+    };
+
+    // 열 경계 두 번 누르기: 그 열에서 가장 긴 내용에 맞춤 (엑셀과 같음)
+    grid.ondblclick = (e) => {
+      const hd = e.target.closest(".rz-c");
+      if (!hd) return;
+      e.preventDefault();
+      const c = +hd.parentNode.dataset.c;
+      let max = 24;
+      grid.querySelectorAll(`td[data-c="${c}"]`).forEach((td) => {
+        if (td.colSpan > 1 || !td.textContent) return;
+        max = Math.max(max, td.scrollWidth + 2);
+      });
+      setColWidth(c, Math.min(max, 600));
+    };
+  }
+
   function colName(c) { let s = ""; c++; while (c > 0) { const m = (c - 1) % 26; s = String.fromCharCode(65 + m) + s; c = Math.floor((c - 1) / 26); } return s; }
 
   function showSheet(ws) {
@@ -513,7 +600,8 @@
     // 엑셀처럼 빈 칸도 조금 더 보여 줌
     const nRows = Math.max(lastR + 1 + 5, 40), nCols = Math.max(lastC + 1 + 2, 12);
     const cols = (ws && ws["!cols"]) || [], rows = (ws && ws["!rows"]) || [];
-    const colW = (c) => { const ci = cols[c]; if (ci && ci.hidden) return 0; if (ci && ci.wpx) return ci.wpx; if (ci && ci.wch) return Math.round(ci.wch * 7 + 5); if (ci && ci.width) return Math.round(ci.width * 7); return 72; };
+    ws.__colW = ws.__colW || {}; ws.__rowH = ws.__rowH || {}; // 사용자가 바꾼 크기 (시트 탭을 바꿔도 유지)
+    const colW = (c) => { if (ws.__colW[c] != null) return ws.__colW[c]; const ci = cols[c]; if (ci && ci.hidden) return 0; if (ci && ci.wpx) return ci.wpx; if (ci && ci.wch) return Math.round(ci.wch * 7 + 5); if (ci && ci.width) return Math.round(ci.width * 7); return 72; };
 
     // 병합 셀
     const span = new Map(), covered = new Set();
@@ -528,13 +616,13 @@
     let h = `<table style="width:${total}px"><colgroup><col style="width:44px">`;
     for (let c = 0; c < nCols; c++) h += `<col style="width:${colW(c)}px">`;
     h += `</colgroup><thead><tr><th class="corner"></th>`;
-    for (let c = 0; c < nCols; c++) h += `<th data-c="${c}">${colName(c)}</th>`;
+    for (let c = 0; c < nCols; c++) h += `<th data-c="${c}">${colName(c)}<span class="rz rz-c"></span></th>`;
     h += `</tr></thead><tbody>`;
     for (let r = 0; r < nRows; r++) {
       const ri = rows[r];
       if (ri && ri.hidden) continue;
-      const hpx = ri && (ri.hpx || (ri.hpt && ri.hpt * 4 / 3));
-      h += `<tr${hpx ? ` style="height:${Math.round(hpx)}px"` : ""}><th data-r="${r}">${r + 1}</th>`;
+      const hpx = ws.__rowH[r] ?? (ri && (ri.hpx || (ri.hpt && ri.hpt * 4 / 3)));
+      h += `<tr${hpx ? ` style="height:${Math.round(hpx)}px"` : ""}><th data-r="${r}">${r + 1}<span class="rz rz-r"></span></th>`;
       for (let c = 0; c < nCols; c++) {
         const key = r + ":" + c;
         if (covered.has(key)) continue;
@@ -581,7 +669,9 @@
       bar.querySelector(".addr").textContent = colName(c) + (r + 1);
       bar.querySelector(".val").textContent = cell ? (cell.f ? "=" + cell.f : String(cell.v ?? "")) : "";
     };
+    enableResize(grid, ws);
     grid.onclick = (e) => {
+      if (e.target.closest(".rz")) return;
       if (e.target.closest("a")) return; // 링크는 바로 열기
       const td = e.target.closest("td[data-r]");
       if (td) select(td);

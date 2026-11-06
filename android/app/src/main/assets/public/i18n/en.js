@@ -80,6 +80,8 @@ window.I18N.en = {
   "open.nativeFail": "Could not open the document: {msg}",
   "header.fullscreen": "⛶ Full screen",
   "sheet.truncated": "This sheet is large; showing the first {rows} rows and {cols} columns.",
+  "sheet.width": "Width",
+  "sheet.height": "Height",
   "header.export": "📤 Export",
   "export.title": "📤 Export · Print · Send",
   "export.close": "Close",

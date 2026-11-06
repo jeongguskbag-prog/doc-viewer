@@ -80,6 +80,8 @@ window.I18N.ko = {
   "open.nativeFail": "문서를 열 수 없습니다: {msg}",
   "header.fullscreen": "⛶ 전체 화면",
   "sheet.truncated": "시트가 커서 처음 {rows}행 · {cols}열까지만 표시합니다.",
+  "sheet.width": "너비",
+  "sheet.height": "높이",
   "header.export": "📤 내보내기",
   "export.title": "📤 내보내기 · 인쇄 · 전송",
   "export.close": "닫기",
