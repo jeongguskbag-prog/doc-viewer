@@ -153,6 +153,7 @@
     <option value="ko">한국어</option>
     <option value="en">English</option>
     <option value="ja">日本語</option>
+    <option value="zh">中文 (简体)</option>
   </select>
 </header>
 
@@ -290,6 +291,7 @@
 <script src="i18n/ko.js"></script>
 <script src="i18n/en.js"></script>
 <script src="i18n/ja.js"></script>
+<script src="i18n/zh.js"></script>
 
 <script>
 (() => {
@@ -301,7 +303,7 @@
 
   // ---------- 언어 ----------
   // 새 언어 추가: i18n/xx.js 작성 → 아래 LANGS 와 헤더 select 에 항목 추가
-  const LANGS = ["ko", "en", "ja"];
+  const LANGS = ["ko", "en", "ja", "zh"];
   const I18N = window.I18N;
 
   function detectLang() {
@@ -331,7 +333,7 @@
     if (!LANGS.includes(next)) return;
     lang = next;
     try { localStorage.setItem("viewer.lang", next); } catch { /* 무시 */ }
-    document.documentElement.lang = lang;
+    document.documentElement.lang = lang === "zh" ? "zh-CN" : lang; // 중국어 글꼴이 바르게 고르도록
     document.title = t("app.title");
     $("langSel").value = lang;
     applyI18n();
