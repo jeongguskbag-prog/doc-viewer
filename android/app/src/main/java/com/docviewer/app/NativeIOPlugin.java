@@ -100,19 +100,55 @@ public class NativeIOPlugin extends Plugin {
         }
     }
 
+    /** 첨부용 임시 파일을 캐시에 쓰고 다른 앱이 읽을 수 있는 content:// 주소를 돌려줌 */
+    private Uri writeShareFile(PluginCall call, String name) throws Exception {
+        File dir = new File(getContext().getCacheDir(), "share");
+        File[] old = dir.listFiles();
+        if (old != null) for (File f : old) //noinspection ResultOfMethodCallIgnored
+            f.delete();
+        if (!dir.mkdirs() && !dir.isDirectory()) throw new Exception("cache dir");
+        File out = new File(dir, name);
+        try (FileOutputStream os = new FileOutputStream(out)) { os.write(decode(call)); }
+        return FileProvider.getUriForFile(getContext(), getContext().getPackageName() + ".fileprovider", out);
+    }
+
+    /** 이메일 앱만 뜨도록 메일 작성 화면을 열고 파일을 첨부 (받는 사람·제목·본문 미리 채움) */
+    @PluginMethod
+    public void email(PluginCall call) {
+        String name = safeName(call.getString("name", "document"));
+        String mime = call.getString("mime", "application/octet-stream");
+        try {
+            Uri uri = writeShareFile(call, name);
+            Intent send = new Intent(Intent.ACTION_SEND);
+            send.setType(mime);
+            String to = call.getString("to", "").trim();
+            if (!to.isEmpty()) send.putExtra(Intent.EXTRA_EMAIL, to.split("\\s*[,;]\\s*"));
+            send.putExtra(Intent.EXTRA_SUBJECT, call.getString("subject", name));
+            send.putExtra(Intent.EXTRA_TEXT, call.getString("body", ""));
+            send.putExtra(Intent.EXTRA_STREAM, uri);
+            send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            // mailto 선택자: 카카오톡 등은 빼고 메일 앱만 보여 줌
+            send.setSelector(new Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:")));
+            Intent chooser = Intent.createChooser(send, call.getString("title", name));
+            chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            try {
+                getActivity().startActivity(chooser);
+            } catch (android.content.ActivityNotFoundException e) {
+                send.setSelector(null); // 메일 앱이 없으면 일반 공유 화면
+                getActivity().startActivity(Intent.createChooser(send, name));
+            }
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("email failed: " + e.getMessage());
+        }
+    }
+
     @PluginMethod
     public void share(PluginCall call) {
         String name = safeName(call.getString("name", "document"));
         String mime = call.getString("mime", "application/octet-stream");
         try {
-            File dir = new File(getContext().getCacheDir(), "share");
-            File[] old = dir.listFiles();
-            if (old != null) for (File f : old) //noinspection ResultOfMethodCallIgnored
-                f.delete();
-            if (!dir.mkdirs() && !dir.isDirectory()) throw new Exception("cache dir");
-            File out = new File(dir, name);
-            try (FileOutputStream os = new FileOutputStream(out)) { os.write(decode(call)); }
-            Uri uri = FileProvider.getUriForFile(getContext(), getContext().getPackageName() + ".fileprovider", out);
+            Uri uri = writeShareFile(call, name);
             Intent send = new Intent(Intent.ACTION_SEND);
             send.setType(mime);
             send.putExtra(Intent.EXTRA_STREAM, uri);
