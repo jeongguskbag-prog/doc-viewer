@@ -77,6 +77,7 @@ window.I18N.ja = {
   "code.cam.notFound": "使用できるカメラがありません。",
   "code.cam.error": "カメラを起動できません: {msg}",
   "code.cam.torch": "🔦 ライト",
+  "open.nativeFail": "文書を開けません: {msg}",
   "header.export": "📤 書き出し",
   "export.title": "📤 書き出し・印刷・送信",
   "export.close": "閉じる",

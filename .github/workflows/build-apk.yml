@@ -18,8 +18,12 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install Capacitor (provides android/capacitor-android module)
-        run: npm install --no-audit --no-fund
+      - name: Install Capacitor and document libraries (bundled into the APK for offline use)
+        run: |
+          npm install --no-audit --no-fund
+          test -f android/app/src/main/assets/public/lib/pdfjs/pdf.worker.min.js
+          test -f android/app/src/main/assets/public/lib/xlsx.full.min.js
+          ls android/app/src/main/assets/public/lib/pdfjs/cmaps | wc -l
 
       - uses: actions/setup-java@v4
         with:

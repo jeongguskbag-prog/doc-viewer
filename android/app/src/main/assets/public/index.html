@@ -167,11 +167,12 @@
   </aside>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<!-- 문서 읽기 라이브러리: 앱 안에 포함 (인터넷 없이 동작). scripts/vendor-libs.js 가 채움 -->
+<script src="lib/pdfjs/pdf.min.js"></script>
+<script src="lib/mammoth.browser.min.js"></script>
+<script src="lib/xlsx.full.min.js"></script>
+<script src="lib/marked.min.js"></script>
+<script src="lib/purify.min.js"></script>
 <script src="vendor/hwp-bridge.js"></script>
 <script src="vendor/codes.js"></script>
 <script src="vendor/export.js"></script>
@@ -181,8 +182,11 @@
 
 <script>
 (() => {
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "lib/pdfjs/pdf.worker.min.js";
+  // 한글·한자·일본어 글꼴(CID) PDF 가 깨지지 않도록 CMap·표준 글꼴을 앱 안에서 불러옴
+  // (상대 경로는 worker 기준으로 풀려 404가 나므로 절대 URL 로 지정)
+  const libUrl = (p) => new URL(p, location.href).href;
+  const PDF_OPTS = { cMapUrl: libUrl("lib/pdfjs/cmaps/"), cMapPacked: true, standardFontDataUrl: libUrl("lib/pdfjs/standard_fonts/") };
 
   // ---------- 언어 ----------
   // 새 언어 추가: i18n/xx.js 작성 → 아래 LANGS 와 헤더 select 에 항목 추가
@@ -255,6 +259,28 @@
   $("pickBtn").addEventListener("click", () => $("fileInput").click());
   $("fileInput").addEventListener("change", (e) => { addFiles(e.target.files); e.target.value = ""; });
   $("langSel").addEventListener("change", (e) => setLanguage(e.target.value));
+
+  // ---------- 다른 앱(카카오톡·Gmail·내 파일)에서 연 문서 받기 ----------
+  // 네이티브 FileIntentPlugin 이 파일을 앱 캐시에 복사한 뒤 fileOpened 이벤트로 경로를 알려 줌
+  (function initNativeOpen() {
+    const cap = window.Capacitor;
+    if (!cap || !cap.isNativePlatform || !cap.isNativePlatform() || !cap.addListener) return;
+    cap.addListener("FileIntent", "fileOpened", async (ev) => {
+      if (!ev) return;
+      if (ev.error || !ev.path) {
+        content.innerHTML = `<div class="error">${escapeHtml(t("open.nativeFail", { msg: ev.error || "" }))}</div>`;
+        return;
+      }
+      try {
+        const res = await fetch(cap.convertFileSrc(ev.path));
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const blob = await res.blob();
+        addFiles([new File([blob], ev.name, { type: ev.mime || blob.type })]);
+      } catch (e) {
+        content.innerHTML = `<div class="error">${escapeHtml(t("open.nativeFail", { msg: e.message }))}</div>`;
+      }
+    });
+  })();
 
   function addFiles(fileList) {
     const added = Array.from(fileList);
@@ -335,7 +361,7 @@
   // ---------- 포맷별 렌더러 ----------
   async function renderPdf(file, myId) {
     const buf = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    const pdf = await pdfjsLib.getDocument({ data: buf, ...PDF_OPTS }).promise;
     if (myId !== state.renderId) return;
     content.innerHTML = "";
     state.rawText = null;
@@ -869,7 +895,7 @@
 
   // PDF 텍스트 추출 (스캔본처럼 텍스트가 없으면 빈 배열)
   async function pdfBlocks(file) {
-    const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+    const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer(), ...PDF_OPTS }).promise;
     const blocks = [];
     for (let p = 1; p <= pdf.numPages; p++) {
       const lines = await pageLines(await pdf.getPage(p));

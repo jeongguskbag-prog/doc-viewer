@@ -77,6 +77,7 @@ window.I18N.en = {
   "code.cam.notFound": "No camera was found.",
   "code.cam.error": "Could not start the camera: {msg}",
   "code.cam.torch": "🔦 Flash",
+  "open.nativeFail": "Could not open the document: {msg}",
   "header.export": "📤 Export",
   "export.title": "📤 Export · Print · Send",
   "export.close": "Close",

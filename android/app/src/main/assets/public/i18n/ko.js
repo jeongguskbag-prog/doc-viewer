@@ -77,6 +77,7 @@ window.I18N.ko = {
   "code.cam.notFound": "사용할 수 있는 카메라가 없습니다.",
   "code.cam.error": "카메라를 시작할 수 없습니다: {msg}",
   "code.cam.torch": "🔦 플래시",
+  "open.nativeFail": "문서를 열 수 없습니다: {msg}",
   "header.export": "📤 내보내기",
   "export.title": "📤 내보내기 · 인쇄 · 전송",
   "export.close": "닫기",

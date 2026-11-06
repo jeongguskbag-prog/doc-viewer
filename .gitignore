@@ -10,3 +10,5 @@ android/.idea/
 *.keystore
 *.jks
 !android/app/debug.keystore
+android/app/src/main/assets/public/lib/
+package-lock.json
