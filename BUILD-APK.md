@@ -8,7 +8,7 @@
 1. 압축을 풀고 `android` 폴더를 Android Studio로 엽니다 (File > Open).
 2. Gradle 동기화가 끝날 때까지 기다립니다.
 3. 메뉴에서 Build > Build Bundle(s) / APK(s) > Build APK(s)를 선택합니다.
-4. 완료되면 `android/app/build/outputs/apk/debug/app-debug.apk` 가 생깁니다.
+4. 완료되면 `android/app/build/outputs/apk/debug/app-debug.apk` 가 생깁니다. (GitHub Actions 빌드는 `DocumentViewer.apk` 이름으로 Releases에 올라갑니다.)
 5. 휴대폰에 옮겨 설치합니다 (설치 전 "알 수 없는 앱 설치" 허용 필요).
 
 또는 터미널에서 `cd android && ./gradlew assembleDebug` 를 실행해도 됩니다.

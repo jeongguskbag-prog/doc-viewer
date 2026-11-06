@@ -34,19 +34,21 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace
 
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk DocumentViewer.apk
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: DocumentViewer
+          path: DocumentViewer.apk
 
-      - name: Publish APK to "latest-debug" release
+      - name: Publish APK to the "latest" release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest-debug
-          name: Latest debug APK
-          prerelease: true
-          make_latest: false
-          files: android/app/build/outputs/apk/debug/app-debug.apk
+          tag_name: latest
+          name: 문서 뷰어 (Document Viewer)
+          make_latest: true
+          files: DocumentViewer.apk
           body: |
-            Debug APK built from ${{ github.sha }}.
+            문서 뷰어 최신 APK (커밋 ${{ github.sha }})
