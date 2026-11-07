@@ -66,6 +66,45 @@ async fn save_file(app: tauri::AppHandle, name: String, data: String) -> Result<
     }
 }
 
+/// 압축 풀기: 풀 위치(폴더)를 고르는 창. 취소하면 None.
+#[tauri::command]
+async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    match app.dialog().file().blocking_pick_folder() {
+        None => Ok(None),
+        Some(fp) => Ok(Some(fp.into_path().map_err(|e| e.to_string())?.to_string_lossy().into_owned())),
+    }
+}
+
+/// 고른 폴더(dir) 안의 상대 경로(rel)에 파일을 씀. ".." 나 절대 경로로 폴더 밖에 쓰는 것을 막음.
+#[tauri::command]
+async fn write_into(dir: String, rel: String, data: String) -> Result<String, String> {
+    let base = PathBuf::from(&dir);
+    if !base.is_dir() {
+        return Err("folder not found".into());
+    }
+    let mut path = base.clone();
+    for seg in rel.split(['/', '\\']) {
+        let clean: String = seg
+            .chars()
+            .map(|c| if c.is_control() || ":*?\"<>|".contains(c) { '_' } else { c })
+            .collect();
+        let clean = clean.trim().trim_end_matches('.').to_string();
+        if clean.is_empty() || clean == "." || clean == ".." {
+            continue;
+        }
+        path.push(clean);
+    }
+    if path == base || !path.starts_with(&base) {
+        return Err("bad path".into());
+    }
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let bytes = STANDARD.decode(data).map_err(|e| e.to_string())?;
+    std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
 /// http/https/mailto/tel 만 기본 프로그램으로 엶
 #[tauri::command]
 fn open_external(app: tauri::AppHandle, url: String) -> Result<(), String> {
@@ -92,7 +131,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(Pending(Mutex::new(read_paths(std::env::args()))))
-        .invoke_handler(tauri::generate_handler![take_opened_files, save_file, open_external])
+        .invoke_handler(tauri::generate_handler![take_opened_files, save_file, open_external, pick_folder, write_into])
         .run(tauri::generate_context!())
         .expect("error while running Document Viewer");
 }

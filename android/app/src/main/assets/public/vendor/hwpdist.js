@@ -4,60 +4,10 @@
 //     MSVC rand() 와 같은 난수열을 만들어 나머지 바이트를 XOR 로 푼다
 //  2) 풀린 데이터의 4 + (씨앗 & 0x0F) 위치에서 16바이트를 AES-128 열쇠로 쓴다
 //  3) 레코드 뒤 나머지를 AES-128-ECB 로 풀면 일반 BodyText 구역과 같은 내용이 된다
-// 이렇게 만든 구역으로 일반 HWP 를 다시 조립해 기존 HWP 보기로 넘긴다. (외부 라이브러리: SheetJS 의 CFB 만 사용)
+// 이렇게 만든 구역으로 일반 HWP 를 다시 조립해 기존 HWP 보기로 넘긴다. (SheetJS 의 CFB, vendor/aes.js 사용)
 window.HwpDist = (() => {
-  // ---------- AES-128 해독 (ECB) ----------
-  const SBOX = new Uint8Array(256), INV = new Uint8Array(256);
-  (() => {
-    let p = 1, q = 1;
-    do {
-      p = p ^ ((p << 1) & 0xff) ^ (p & 0x80 ? 0x1b : 0);
-      q ^= q << 1; q ^= q << 2; q ^= q << 4; q &= 0xff; if (q & 0x80) q ^= 0x09;
-      const x = q ^ ((q << 1 | q >> 7) & 0xff) ^ ((q << 2 | q >> 6) & 0xff) ^ ((q << 3 | q >> 5) & 0xff) ^ ((q << 4 | q >> 4) & 0xff) ^ 0x63;
-      SBOX[p] = x; INV[x] = p;
-    } while (p !== 1);
-    SBOX[0] = 0x63; INV[0x63] = 0;
-  })();
-  const xt = (b) => ((b << 1) ^ (b & 0x80 ? 0x1b : 0)) & 0xff;
-  const mul = (a, b) => { let r = 0; while (b) { if (b & 1) r ^= a; a = xt(a); b >>= 1; } return r; };
-  function expandKey(key) {
-    const w = new Uint8Array(176); w.set(key);
-    let rcon = 1;
-    for (let i = 16; i < 176; i += 4) {
-      let t = w.slice(i - 4, i);
-      if (i % 16 === 0) {
-        t = new Uint8Array([SBOX[t[1]] ^ rcon, SBOX[t[2]], SBOX[t[3]], SBOX[t[0]]]);
-        rcon = xt(rcon);
-      }
-      for (let j = 0; j < 4; j++) w[i + j] = w[i - 16 + j] ^ t[j];
-    }
-    return w;
-  }
-  function decryptBlock(s, w) {
-    const add = (r) => { for (let i = 0; i < 16; i++) s[i] ^= w[r * 16 + i]; };
-    const invShift = () => { const t = s.slice(); for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) s[((c + r) % 4) * 4 + r] = t[c * 4 + r]; };
-    const invSub = () => { for (let i = 0; i < 16; i++) s[i] = INV[s[i]]; };
-    const invMix = () => {
-      for (let c = 0; c < 4; c++) {
-        const a = s.slice(c * 4, c * 4 + 4);
-        s[c * 4] = mul(a[0], 14) ^ mul(a[1], 11) ^ mul(a[2], 13) ^ mul(a[3], 9);
-        s[c * 4 + 1] = mul(a[0], 9) ^ mul(a[1], 14) ^ mul(a[2], 11) ^ mul(a[3], 13);
-        s[c * 4 + 2] = mul(a[0], 13) ^ mul(a[1], 9) ^ mul(a[2], 14) ^ mul(a[3], 11);
-        s[c * 4 + 3] = mul(a[0], 11) ^ mul(a[1], 13) ^ mul(a[2], 9) ^ mul(a[3], 14);
-      }
-    };
-    add(10);
-    for (let r = 9; r >= 1; r--) { invShift(); invSub(); add(r); invMix(); }
-    invShift(); invSub(); add(0);
-    return s;
-  }
-  function aesEcbDecrypt(key, data) {
-    const w = expandKey(key);
-    const n = data.length - (data.length % 16);
-    const out = new Uint8Array(n);
-    for (let i = 0; i < n; i += 16) out.set(decryptBlock(data.slice(i, i + 16), w), i);
-    return out;
-  }
+  // AES 해독은 vendor/aes.js (window.AES) 를 씀
+  const aesEcbDecrypt = (key, data) => AES.ecbDecrypt(key, data);
 
   // ---------- 배포용 구역 해독 ----------
   function decodeSection(bytes) {

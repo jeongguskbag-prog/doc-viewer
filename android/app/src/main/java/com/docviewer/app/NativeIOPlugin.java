@@ -53,7 +53,9 @@ public class NativeIOPlugin extends Plugin {
                 ContentValues v = new ContentValues();
                 v.put(MediaStore.Downloads.DISPLAY_NAME, name);
                 v.put(MediaStore.Downloads.MIME_TYPE, mime);
-                v.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                // folder: 압축 풀기 등에서 다운로드 아래 하위 폴더 (예: "자료/첨부")
+                String folder = safeFolder(call.getString("folder", ""));
+                v.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + (folder.isEmpty() ? "" : "/" + folder));
                 v.put(MediaStore.Downloads.IS_PENDING, 1);
                 Uri uri = cr.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
                 if (uri == null) throw new Exception("insert failed");
@@ -66,7 +68,7 @@ public class NativeIOPlugin extends Plugin {
                 cr.update(uri, v, null, null);
                 JSObject ret = new JSObject();
                 ret.put("name", name);
-                ret.put("folder", "Download");
+                ret.put("folder", "Download" + (folder.isEmpty() ? "" : "/" + folder));
                 call.resolve(ret);
             } catch (Exception e) {
                 call.reject("save failed: " + e.getMessage());
@@ -189,6 +191,18 @@ public class NativeIOPlugin extends Plugin {
 
     private static byte[] decode(PluginCall call) {
         return Base64.decode(call.getString("data", ""), Base64.DEFAULT);
+    }
+
+    /** 하위 폴더 경로 정리: "..", 빈 칸, 금지 문자 제거 */
+    private static String safeFolder(String f) {
+        StringBuilder out = new StringBuilder();
+        for (String seg : f.replace('\\', '/').split("/")) {
+            String c = seg.replaceAll("[\\\\:*?\"<>|\\x00-\\x1f]", "_").trim();
+            if (c.isEmpty() || c.equals(".") || c.equals("..")) continue;
+            if (out.length() > 0) out.append('/');
+            out.append(c.length() > 100 ? c.substring(0, 100) : c);
+        }
+        return out.toString();
     }
 
     private static String safeName(String n) {

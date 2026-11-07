@@ -119,6 +119,9 @@
 - 문서에서 만든 화면(HTML)은 모두 **DOMPurify** 로 정리한 뒤 표시 (스크립트 실행 차단)
 - 문서 안 링크는 `http`, `https`, `mailto`, `tel` 만 열림
 - 다른 앱에서 받는 파일은 200MB 초과 시 거부, 파일 이름의 경로 문자 제거
+- **압축 파일(ZIP·TAR·GZ)**: 기기 안에서만 풂 (`vendor/archive.js`, fflate). 한 파일당 풀린 크기 512MB, 항목 2만 개, "모두 풀기" 5,000개·2GB 상한으로 압축 폭탄을 막음.
+  저장할 때 `../`, 절대 경로, 드라이브 문자, 금지 문자를 지워 **고른 폴더 밖으로 파일이 써지지 않게** 함 (윈도우판은 Rust 쪽 `write_into` 에서 한 번 더 검사).
+  암호 ZIP(ZipCrypto, WinZip AES)은 사용자가 입력한 암호로 기기 안에서만 풀며, 암호는 앱이 닫히면 사라짐 (저장하지 않음)
 - 암호가 걸린 HWP/HWPX 는 열지 않고 안내만 표시
 - **배포용 HWP 문서**: 공개된 HWP 5.0 형식 설명에 따라 기기 안에서만 본문을 풀어 보여 줌 (외부 전송 없음, `vendor/hwpdist.js`).
   작성자가 편집·복사·인쇄를 막으려고 만든 문서이므로 **보기 전용**으로 열고 저장·내보내기·인쇄·이메일·팩스를 끔
@@ -138,6 +141,7 @@
 | DOMPurify 3.1.6 | 화면 정리(보안) | MPL-2.0 또는 Apache-2.0 |
 | hwp-convert 1.13.0 (JSZip, pako, cfb 등 포함) | HWP·HWPX 보기, HWPX 내보내기 | MIT (JSZip: MIT/GPLv3 중 MIT 선택, pako: MIT·Zlib, cfb: Apache-2.0) |
 | html2canvas 1.4.1 | PDF 바로 만들기 | MIT |
+| fflate 0.8.3 | 압축 파일(ZIP·GZ) 풀기 | MIT |
 | docx | Word 내보내기 | MIT |
 | bwip-js | 바코드·QR 만들기 | MIT |
 | ZXing 계열 디코더 (`vendor/codes.js`) | 바코드·QR 읽기 | Apache-2.0 (**배포 전 원본 패키지·버전 확인 필요**) |

@@ -17,6 +17,7 @@
   }
   :root[data-theme="dark"] { --bg: #15171c; --panel: #1f2229; --text: #e6e8ec; --muted: #9aa3b2; --border: #2e333d; --accent: #60a5fa; --warn: #fbbf24; }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; } /* display 를 지정한 요소도 hidden 이면 확실히 숨김 */
   body { margin: 0; font-family: system-ui, -apple-system, "Malgun Gothic", "Hiragino Sans", sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
   header { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
   header h1 { font-size: 16px; margin: 0; margin-right: auto; }
@@ -132,6 +133,17 @@
   #content .pp-tbl td { border: 1px solid #9ca3af; padding: .4cqw .6cqw; vertical-align: top; color: #000; }
   .pp-no { position: absolute; right: 8px; bottom: 4px; font-size: 11px; color: #9ca3af; z-index: 5; }
   .pp-unsup { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; border: 1px dashed #9ca3af; color: #9ca3af; font-size: 4cqw; }
+  .arc-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .arc-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .arc-msg { min-height: 18px; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .arc-msg.error { color: #dc2626; padding: 0; }
+  .arc-dir { font-size: 12px; color: var(--muted); padding: 10px 4px 4px; font-weight: 600; word-break: break-all; }
+  .arc-row { display: flex; align-items: center; gap: 8px; padding: 7px 4px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .arc-row.nested { padding-left: 18px; }
+  .arc-name { flex: 1; min-width: 0; word-break: break-all; cursor: pointer; }
+  .arc-size { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .arc-btns { display: flex; gap: 4px; }
+  .arc-btns button { padding: 5px 9px; font-size: 12px; }
   .ro-banner { margin: -8px 0 14px; padding: 8px 210px 8px 12px; border-radius: 6px; background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; font-size: 13px; }
   #content.read-only { -webkit-user-select: none; user-select: none; }
   @media (max-width: 600px) { .ro-banner { padding-right: 12px; margin-top: 40px; } }
@@ -307,6 +319,7 @@
           <option value="ppt" data-i18n="pick.ppt">PowerPoint (PPTX)</option>
           <option value="text" data-i18n="pick.text">Text (TXT/MD)</option>
           <option value="image" data-i18n="pick.image">Images</option>
+          <option value="archive" data-i18n="pick.archive">Archives (ZIP/TAR/GZ)</option>
         </select>
       </div>
       <input type="file" id="fileInput" multiple hidden>
@@ -346,7 +359,10 @@
 <script src="lib/marked.min.js"></script>
 <script src="lib/purify.min.js"></script>
 <script src="vendor/hwp-bridge.js"></script>
+<script src="vendor/aes.js"></script>
 <script src="vendor/hwpdist.js"></script>
+<script src="lib/fflate.min.js"></script>
+<script src="vendor/archive.js"></script>
 <!-- HWPX 읽기·쓰기 (hwp-convert, MIT). ES 모듈이라 준비되면 window.HwpConvert 로 노출 -->
 <script type="module">
   import * as HC from "./lib/hwp-convert.mjs";
@@ -491,6 +507,8 @@
     ppt: [".pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"],
     text: [".txt", ".md", "text/plain", "text/markdown", "text/x-markdown"],
     image: [".png", ".jpg", ".jpeg", ".gif", ".webp", "image/png", "image/jpeg", "image/gif", "image/webp"],
+    archive: [".zip", ".tar", ".gz", ".tgz", "application/zip", "application/x-zip-compressed", "application/x-zip",
+      "application/gzip", "application/x-gzip", "application/x-tar", "application/x-compressed-tar", "application/x-gtar"],
   };
   function applyPickType(kind) {
     const accept = kind === "all" ? "*/*"
@@ -507,7 +525,8 @@
   });
 
   // ---------- 확장자가 없거나 낯선 파일: 내용으로 형식 판별 ----------
-  const KNOWN_EXTS = ["pdf", "hwp", "hwpx", "docx", "pptx", "xlsx", "xls", "csv", "md", "txt", "png", "jpg", "jpeg", "gif", "webp"];
+  const KNOWN_EXTS = ["pdf", "hwp", "hwpx", "docx", "pptx", "xlsx", "xls", "csv", "md", "txt", "png", "jpg", "jpeg", "gif", "webp", "zip", "tar", "gz", "tgz"];
+  const ARCHIVE_EXTS = ["zip", "tar", "gz", "tgz"];
   async function sniffExt(file) {
     const head = new Uint8Array(await file.slice(0, 8192).arrayBuffer());
     const starts = (...b) => b.every((v, i) => head[i] === v);
@@ -526,9 +545,12 @@
         if (has("/ppt/presentation.xml")) return "pptx";
         if (has("/FileHeader")) return "hwp";
         if (has("/Workbook") || has("/Book")) return "xls";
+        if (head[0] === 0x50) return "zip"; // 문서가 아닌 일반 ZIP
       } catch { /* 판별 실패 */ }
-      return null;
+      return head[0] === 0x50 ? "zip" : null;
     }
+    if (head[0] === 0x1f && head[1] === 0x8b) return "gz";
+    if (head.length > 262 && String.fromCharCode(...head.subarray(257, 262)) === "ustar") return "tar";
     // 글자 파일: 앞부분에 0 바이트가 없으면 텍스트로 봄
     if (head.length && !head.includes(0)) return "txt";
     return null;
@@ -577,6 +599,7 @@
     updateTrButton();
     content.classList.remove("sheet-mode");
     state.sheetPlain = null;
+    state.archive = null;
     content.innerHTML = `<div class="empty">${escapeHtml(t("viewer.loading"))}</div>`;
     state.links = [];
     state.linkStatus = "loading";
@@ -590,6 +613,8 @@
         case "hwp":  await renderHwp(file); break;
         case "hwpx": await renderHwpx(file); break;
         case "pptx": await renderPptx(file); break;
+        case "zip": case "tar": case "gz": case "tgz":
+          await renderArchive(file); break;
         case "docx": await renderDocx(file); break;
         case "xlsx":
         case "xls":
@@ -708,6 +733,122 @@
     pptxUrls = view.urls;
     content.innerHTML = DOMPurify.sanitize(`<div class="pp-deck">${view.html}</div>`, { ADD_ATTR: ["data-slide"], ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|tel:|blob:)/i });
     state.rawText = view.text;
+  }
+
+  // ---------- 압축 파일 (ZIP · TAR · GZ): vendor/archive.js ----------
+  const EXTRACT_MAX_FILES = 5000, EXTRACT_MAX_BYTES = 2 * 1024 * 1024 * 1024;
+  const fileIcon = (name) => {
+    const e = extOf(name);
+    return ({ pdf: "📕", hwp: "📘", hwpx: "📘", docx: "📄", xlsx: "📊", xls: "📊", csv: "📊", pptx: "📙", txt: "📝", md: "📝", zip: "📦", tar: "📦", gz: "📦", tgz: "📦" })[e]
+      || (IMAGE_EXTS.includes(e) ? "🖼" : "📎");
+  };
+  function archiveErrorText(e) {
+    const map = { needPassword: "zip.needPassword", badPassword: "zip.badPassword", tooBig: "zip.tooBig", tooMany: "zip.tooMany", method: "zip.method", corrupt: "zip.corrupt", notArchive: "zip.corrupt" };
+    return e && map[e.code] ? t(map[e.code]) : (e && e.message) || String(e);
+  }
+
+  async function renderArchive(file) {
+    let arc;
+    try { arc = ArchiveReader.open(new Uint8Array(await file.arrayBuffer()), file.name); }
+    catch (e) { throw new Error(archiveErrorText(e)); }
+    const entries = arc.entries.filter((e) => !e.dir).sort((a, b) => a.path.localeCompare(b.path, "ko"));
+    state.archive = { name: file.name, entries, password: null };
+    const total = entries.reduce((s, e) => s + e.size, 0);
+    const locked = entries.some((e) => e.encrypted);
+    let html = `<div class="arc-head"><div><strong>📦 ${escapeHtml(file.name)}</strong>
+      <div class="arc-sub">${escapeHtml(t("zip.summary", { n: entries.length, size: formatSize(total) }))}${locked ? " · 🔒 " + escapeHtml(t("zip.locked")) : ""}</div></div>
+      <button id="arcAll"${entries.length ? "" : " disabled"}>${escapeHtml(t("zip.extractAll"))}</button></div>
+      <div id="arcMsg" class="arc-msg"></div><div class="arc-list">`;
+    let lastDir = null;
+    entries.forEach((e, i) => {
+      const parts = e.path.split("/");
+      const dir = parts.slice(0, -1).join("/");
+      if (dir !== lastDir) { if (dir) html += `<div class="arc-dir">📁 ${escapeHtml(dir)}/</div>`; lastDir = dir; }
+      const name = parts[parts.length - 1];
+      html += `<div class="arc-row${dir ? " nested" : ""}" data-i="${i}">
+        <span class="arc-name">${fileIcon(name)} ${escapeHtml(name)}${e.encrypted ? " 🔒" : ""}</span>
+        <span class="arc-size">${formatSize(e.size)}</span>
+        <span class="arc-btns"><button class="ghost arc-open">${escapeHtml(t("zip.open"))}</button><button class="ghost arc-save">${escapeHtml(t("zip.save"))}</button></span></div>`;
+    });
+    if (!entries.length) html += `<div class="empty">${escapeHtml(t("zip.empty"))}</div>`;
+    content.innerHTML = html + "</div>";
+    state.rawText = entries.map((e) => e.path).join("\n");
+    $("viewTools").hidden = true; // 번역·전체 보기는 목록 화면에 쓸모가 없음
+    content.querySelectorAll(".arc-row").forEach((row) => {
+      const e = entries[+row.dataset.i];
+      row.querySelector(".arc-open").onclick = () => arcAction(e, "open");
+      row.querySelector(".arc-save").onclick = () => arcAction(e, "save");
+      row.querySelector(".arc-name").onclick = () => arcAction(e, "open");
+    });
+    $("arcAll").onclick = extractAll;
+  }
+
+  // 암호가 필요하면 물어보고(최대 3번), 맞으면 기억해 둠
+  async function readEntry(e) {
+    const arc = state.archive;
+    for (let tries = 0; ; tries++) {
+      try { return await e.read(arc.password); }
+      catch (err) {
+        if ((err.code === "needPassword" || err.code === "badPassword") && tries < 3) {
+          const pw = prompt(t(err.code === "badPassword" && arc.password != null ? "zip.badPasswordRetry" : "zip.passwordPrompt", { name: arc.name }));
+          if (pw == null) throw Object.assign(new Error(t("zip.cancelled")), { code: "cancelled" });
+          arc.password = pw;
+          continue;
+        }
+        throw new Error(archiveErrorText(err));
+      }
+    }
+  }
+  const arcMsg = (text, isError) => { const m = $("arcMsg"); if (m) { m.textContent = text; m.classList.toggle("error", !!isError); } };
+
+  async function arcAction(e, what) {
+    const name = e.path.split("/").pop();
+    try {
+      arcMsg(t("zip.working"));
+      const bytes = await readEntry(e);
+      if (what === "open") { arcMsg(""); addFiles([new File([bytes], name)]); return; }
+      const saved = await saveOutput(new Blob([bytes]), name);
+      arcMsg(saved === false ? "" : t("zip.savedOne", { name }));
+    } catch (err) {
+      arcMsg(err.code === "cancelled" ? "" : err.message, err.code !== "cancelled");
+    }
+  }
+
+  // 모두 풀기: 휴대폰은 다운로드/<압축 이름>/ 폴더, PC 는 고른 폴더 아래 <압축 이름>/ 에 원래 폴더 구조대로
+  async function extractAll() {
+    const arc = state.archive;
+    const list = arc.entries;
+    const total = list.reduce((s, e) => s + e.size, 0);
+    if (list.length > EXTRACT_MAX_FILES || total > EXTRACT_MAX_BYTES) { arcMsg(t("zip.tooBigAll"), true); return; }
+    const folder = ArchiveReader.safePath(baseName(arc.name).replace(/\.tar$/i, "")) || "archive";
+    let dest = null;
+    if (desktop()) {
+      dest = await tauriInvoke("pick_folder", {});
+      if (!dest) return;
+    }
+    $("arcAll").disabled = true;
+    let done = 0;
+    try {
+      for (const e of list) {
+        arcMsg(t("zip.progress", { i: done + 1, n: list.length }));
+        const bytes = await readEntry(e);
+        const rel = ArchiveReader.safePath(e.path) || e.path.split("/").pop();
+        if (desktop()) {
+          await tauriInvoke("write_into", { dir: dest, rel: folder + "/" + rel, data: await blobToBase64(new Blob([bytes])) });
+        } else if (native()) {
+          const parts = rel.split("/");
+          await nativeIO("save", new Blob([bytes]), parts.pop(), { folder: [folder].concat(parts).join("/") });
+        } else {
+          saveBlob(new Blob([bytes]), rel.replace(/\//g, "_"));
+        }
+        done++;
+      }
+      arcMsg(t("zip.extracted", { n: done, folder: desktop() ? dest + "\\" + folder : native() ? "Download/" + folder : t("zip.downloads") }));
+    } catch (err) {
+      arcMsg(err.code === "cancelled" ? "" : t("zip.extractFail", { n: done, msg: err.message }), err.code !== "cancelled");
+    } finally {
+      if ($("arcAll")) $("arcAll").disabled = false;
+    }
   }
 
   // ---------- 보기 전용 (배포용 문서) ----------
@@ -1672,6 +1813,7 @@
 
   // 현재 파일에서 내보낼 형식 목록 (파일 종류에 따라 다름)
   function availableFormats(ext) {
+    if (ARCHIVE_EXTS.includes(ext)) return ["original"];
     if (IMAGE_EXTS.includes(ext)) return ["pdfdirect", "png", "pdf", "original"];
     if (ext === "pdf") return ["hwpx", "txt", "md", "html", "docx", "csv", "xlsx", "png", "pdf", "original"];
     return ["pdfdirect", "hwpx", "txt", "md", "html", "docx", "csv", "xlsx", "pdf", "original"];

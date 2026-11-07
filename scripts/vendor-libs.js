@@ -14,6 +14,7 @@ const files = {
   "xlsx.full.min.js": "xlsx/dist/xlsx.full.min.js",
   "marked.min.js": "marked/marked.min.js",
   "purify.min.js": "dompurify/dist/purify.min.js",
+  "fflate.min.js": "fflate/umd/index.js", // 압축 파일(ZIP·GZ) 풀기
   "html2canvas.min.js": "html2canvas/dist/html2canvas.min.js", // PDF 바로 만들기: 화면 → 그림
   "hwp-convert.mjs": "hwp-convert/dist/browser/hwp-convert.browser.mjs", // HWPX 읽기 · HWPX 내보내기
 };

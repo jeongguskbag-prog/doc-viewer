@@ -11,6 +11,7 @@
     "@capacitor/android": "8.6.0",
     "@capacitor/core": "8.6.0",
     "dompurify": "3.1.6",
+    "fflate": "0.8.3",
     "html2canvas": "1.4.1",
     "hwp-convert": "1.13.0",
     "mammoth": "1.6.0",
