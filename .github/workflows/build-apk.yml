@@ -32,32 +32,46 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Build debug APK
+      - name: Build standard APK
         working-directory: android
         run: |
           chmod +x gradlew
+          node ../scripts/write-config.js standard
           ./gradlew assembleDebug --no-daemon --stacktrace
+          cp app/build/outputs/apk/debug/app-debug.apk ../DocumentViewer.apk
 
-      - name: Rename APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk DocumentViewer.apk
+      # 기관용: 망분리(보안) 모드가 항상 켜져 있고 끌 수 없는 배포판
+      - name: Build institutional air-gapped APK
+        working-directory: android
+        run: |
+          node ../scripts/write-config.js airgap
+          ./gradlew assembleDebug --no-daemon --stacktrace
+          cp app/build/outputs/apk/debug/app-debug.apk ../DocumentViewer-Airgap.apk
+          node ../scripts/write-config.js standard
 
-      - name: Upload APK artifact
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: DocumentViewer
-          path: DocumentViewer.apk
+          path: |
+            DocumentViewer.apk
+            DocumentViewer-Airgap.apk
 
-      - name: Remove old "latest-debug" release
+      # gh CLI 로 올리고, 일시적인 GitHub 오류에 대비해 최대 4번 재시도
+      - name: Publish APKs to the "latest" release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release delete latest-debug --cleanup-tag --yes --repo "$GITHUB_REPOSITORY" || true
-
-      - name: Publish APK to the "latest" release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest
-          name: 문서 뷰어 (Document Viewer)
-          make_latest: true
-          files: DocumentViewer.apk
-          body: |
-            문서 뷰어 최신 APK (커밋 ${{ github.sha }})
+        run: |
+          notes="문서 뷰어 최신 APK (커밋 ${GITHUB_SHA})
+          - DocumentViewer.apk: 일반판
+          - DocumentViewer-Airgap.apk: 기관용 망분리판 (외부 통신 차단, 끌 수 없음)"
+          for i in 1 2 3 4; do
+            if gh release view latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              gh release upload latest DocumentViewer.apk DocumentViewer-Airgap.apk --clobber --repo "$GITHUB_REPOSITORY" \
+                && gh release edit latest --title "문서 뷰어 (Document Viewer)" --notes "$notes" --latest --repo "$GITHUB_REPOSITORY" && exit 0
+            else
+              gh release create latest DocumentViewer.apk DocumentViewer-Airgap.apk --title "문서 뷰어 (Document Viewer)" --notes "$notes" --latest --repo "$GITHUB_REPOSITORY" && exit 0
+            fi
+            echo "publish attempt $i failed; retrying"; sleep $((i * 10))
+          done
+          exit 1

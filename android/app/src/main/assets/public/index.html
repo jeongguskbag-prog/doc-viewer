@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Document Viewer</title>
+<!-- 배포판 설정과 망분리(보안) 모드: 다른 모든 스크립트보다 먼저 -->
+<script src="config.js"></script>
+<script src="airgap.js"></script>
 <style>
   :root {
     --bg: #f5f6f8; --panel: #ffffff; --text: #1d1f23; --muted: #6b7280;
@@ -56,6 +59,11 @@
   #trMenu button { display: block; width: 100%; text-align: left; background: transparent; color: var(--text); border: 0; border-radius: 6px; padding: 9px 10px; font-size: 14px; transform: none; box-shadow: none; height: auto; }
   #trMenu button:hover, #trMenu button.on { background: var(--bg); }
   #trMenu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
+  .ag-badge { font-size: 12px; font-weight: 600; color: #065f46; background: #d1fae5; border: 1px solid #6ee7b7; border-radius: 999px; padding: 2px 8px; vertical-align: middle; white-space: nowrap; }
+  .set-row { padding: 12px 0; border-top: 1px solid var(--border); }
+  .set-row:first-of-type { border-top: 0; }
+  .set-switch { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .set-switch input { width: 20px; height: 20px; }
   .ex-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
   .ex-actions button { padding: 10px 6px; font-size: 14px; }
   .ex-actions button.on { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -141,7 +149,7 @@
 <body>
 
 <header>
-  <h1 data-i18n="app.heading">📄 Document Viewer</h1>
+  <h1><span data-i18n="app.heading">📄 Document Viewer</span> <span id="airgapBadge" class="ag-badge" hidden data-i18n="airgap.badge">🔒 Air-gapped</span></h1>
   <input type="search" id="docSearch" data-i18n-placeholder="header.search" placeholder="Search text in document" disabled>
   <span id="matchInfo" style="font-size:13px;color:var(--muted)"></span>
   <button class="ghost" id="zoomOut" disabled>A−</button>
@@ -149,6 +157,7 @@
   <button class="ghost" id="codeBtn" data-i18n="header.code">🔲 Codes</button>
   <button class="ghost" id="exportBtn" data-i18n="header.export" disabled>📤 Export</button>
   <button class="ghost" id="darkToggle" data-i18n="header.theme">🌓 Theme</button>
+  <button class="ghost" id="settingsBtn" data-i18n="header.settings">⚙ Settings</button>
   <select class="lang" id="langSel" aria-label="Language">
     <option value="ko">한국어</option>
     <option value="en">English</option>
@@ -199,6 +208,24 @@
     <div id="makeMsg" style="color:#dc2626;font-size:13px;min-height:18px"></div>
     <div id="makePreview" style="background:#fff;padding:10px;border-radius:6px;text-align:center;min-height:40px"></div>
   </section>
+</dialog>
+
+<dialog id="settingsDialog" style="width:min(520px,92vw);border:1px solid var(--border);border-radius:10px;background:var(--panel);color:var(--text);padding:16px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <strong data-i18n="settings.title">⚙ Settings</strong>
+    <button class="ghost" id="settingsClose" data-i18n="export.close">Close</button>
+  </div>
+  <div class="set-row">
+    <label class="set-switch"><input type="checkbox" id="airgapToggle"> <strong data-i18n="airgap.title">🔒 Air-gapped (security) mode</strong></label>
+    <div class="ex-hint" data-i18n="airgap.desc"></div>
+    <div class="ex-hint" id="airgapState"></div>
+  </div>
+  <div class="set-row" id="trEngineRow">
+    <strong data-i18n="settings.trEngine">🌐 Translation engine</strong>
+    <div class="ex-hint" id="trEngineState"></div>
+    <button class="ghost" id="trEngineBtn" data-i18n="settings.trEngineBtn">Change engine / API key</button>
+  </div>
+  <div class="ex-hint" id="editionInfo" style="margin-top:10px"></div>
 </dialog>
 
 <dialog id="exportDialog" style="width:min(520px,92vw);border:1px solid var(--border);border-radius:10px;background:var(--panel);color:var(--text);padding:16px">
@@ -340,6 +367,7 @@
     rebuildCodeTypes();
     renderFileList();
     renderLinkList();
+    applyAirgapUi();
   }
 
   // ---------- 공통 ----------
@@ -1079,6 +1107,7 @@
   }
 
   async function translateDoc(target) {
+    if (AG.on && target) { trStatus(t("airgap.trBlocked")); return; }
     const job = ++trJob;
     clearTextHits(); $("docSearch").value = ""; $("matchInfo").textContent = "";
     restoreOriginal();
@@ -1152,6 +1181,31 @@
     try { if (v.trim()) localStorage.setItem("viewer.trKey", v.trim()); else localStorage.removeItem("viewer.trKey"); } catch { /* 무시 */ }
     trCache.clear();
     trStatus(v.trim() ? t("tr.engineGoogle") : t("tr.engineFree"));
+  };
+
+  // ---------- 설정: 망분리(보안) 모드 ----------
+  // 켜면 외부 통신 기능(번역)을 숨기고, airgap.js 가 외부 요청을 모두 차단함. 기관용 빌드는 항상 켜짐(잠금).
+  const AG = window.AIRGAP || { on: false, locked: false };
+  function applyAirgapUi() {
+    $("airgapBadge").hidden = !AG.on;
+    $("trBtn").hidden = AG.on;
+    $("trEngineRow").hidden = AG.on;
+    $("airgapToggle").checked = AG.on;
+    $("airgapToggle").disabled = AG.locked;
+    $("airgapState").textContent = AG.locked ? t("airgap.locked") : (AG.on ? t("airgap.onNote") : t("airgap.offNote"));
+    $("trEngineState").textContent = trKey() ? t("tr.engineGoogle") : t("tr.engineFree");
+    const ed = (window.APP_CONFIG && window.APP_CONFIG.edition) || "standard";
+    $("editionInfo").textContent = t("settings.edition", { ed: t("edition." + ed) });
+  }
+  $("settingsBtn").onclick = () => { applyAirgapUi(); $("settingsDialog").showModal(); };
+  $("settingsClose").onclick = () => $("settingsDialog").close();
+  $("trEngineBtn").onclick = () => { $("trSettings").click(); applyAirgapUi(); };
+  $("airgapToggle").onchange = (e) => {
+    if (AG.locked) { e.target.checked = true; return; }
+    const next = e.target.checked;
+    if (!confirm(t(next ? "airgap.confirmOn" : "airgap.confirmOff"))) { e.target.checked = !next; return; }
+    try { localStorage.setItem("viewer.airgap", next ? "1" : "0"); } catch { /* 무시 */ }
+    location.reload(); // 보안 정책(CSP)은 다시 불러와야 적용됨
   };
 
   // ---------- 확대/축소 & 테마 ----------
