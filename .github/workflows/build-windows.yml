@@ -48,7 +48,7 @@ jobs:
           node scripts/write-config.js airgap
           cd desktop/src-tauri
           rm -rf target/release/bundle/nsis
-          tauri build --ci --config '{"productName":"Document Viewer (Airgap)","identifier":"com.docviewer.desktop.airgap","bundle":{"windows":{"webviewInstallMode":{"type":"skip"}}}}'
+          tauri build --ci --config '{"productName":"Document Viewer (Airgap)","identifier":"com.docviewer.desktop.airgap","bundle":{"windows":{"webviewInstallMode":{"type":"skip","silent":null}}}}'
           cp target/release/bundle/nsis/*-setup.exe ../../out/DocumentViewer-Airgap-Setup.exe
           cp target/release/DocumentViewer.exe ../../out/DocumentViewer-Airgap.exe
           cd ../..

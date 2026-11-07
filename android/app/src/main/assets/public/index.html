@@ -118,6 +118,18 @@
   .xl-tab { background: transparent; color: #333; border: 0; border-right: 1px solid #d4d4d4; border-radius: 0; padding: 9px 16px; white-space: nowrap; font-size: 13px; }
   .xl-tab.active { background: #fff; color: #107c41; font-weight: 600; box-shadow: inset 0 -3px 0 #107c41; }
   img.hwp-img { max-width: 100%; height: auto; }
+  /* PPTX 슬라이드: 글꼴 크기는 슬라이드 폭 기준(cqw) */
+  .pp-deck { max-width: 960px; margin: 0 auto; }
+  .pp-slide { position: relative; container-type: inline-size; width: 100%; margin: 0 0 18px; box-shadow: 0 1px 6px rgba(0,0,0,.25); overflow: hidden; color: #000; line-height: 1.2; font-family: "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif; }
+  .pp-box { position: absolute; box-sizing: border-box; }
+  .pp-txt { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; }
+  .pp-p { margin: 0 0 .25em; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+  .pp-bu { display: inline-block; width: 1.1em; }
+  .pp-box img { width: 100%; height: 100%; display: block; object-fit: fill; }
+  #content .pp-tbl { width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; font-size: inherit; }
+  #content .pp-tbl td { border: 1px solid #9ca3af; padding: .4cqw .6cqw; vertical-align: top; color: #000; }
+  .pp-no { position: absolute; right: 8px; bottom: 4px; font-size: 11px; color: #9ca3af; z-index: 5; }
+  .pp-unsup { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; border: 1px dashed #9ca3af; color: #9ca3af; font-size: 4cqw; }
   .hwpx-doc img { max-width: 100%; height: auto; }
   .hwpx-doc table { margin: 6px 0; }
   .hwpx-doc p { margin: 0 0 6px; line-height: 1.6; white-space: pre-wrap; }
@@ -279,7 +291,7 @@
       <span data-i18n="drop.text">Drop files here or</span><br>
       <button id="pickBtn" style="margin-top:8px" data-i18n="drop.pick">Choose files</button>
       <input type="file" id="fileInput" multiple hidden
-        accept=".pdf,.hwp,.hwpx,.docx,.xlsx,.xls,.csv,.md,.txt,.png,.jpg,.jpeg,.gif,.webp">
+        accept=".pdf,.hwp,.hwpx,.docx,.pptx,.xlsx,.xls,.csv,.md,.txt,.png,.jpg,.jpeg,.gif,.webp">
     </div>
     <h2 data-i18n="list.recent">Opened documents</h2>
     <div id="fileList"><div class="empty" data-i18n="list.empty">No documents opened yet</div></div>
@@ -323,6 +335,7 @@
   window.dispatchEvent(new Event("hwpconvert-ready"));
 </script>
 <script src="vendor/codes.js"></script>
+<script src="vendor/pptx.js"></script>
 <script src="vendor/export.js"></script>
 <script src="i18n/ko.js"></script>
 <script src="i18n/en.js"></script>
@@ -491,6 +504,7 @@
         case "pdf":  await renderPdf(file, myId); break;
         case "hwp":  await renderHwp(file); break;
         case "hwpx": await renderHwpx(file); break;
+        case "pptx": await renderPptx(file); break;
         case "docx": await renderDocx(file); break;
         case "xlsx":
         case "xls":
@@ -584,6 +598,21 @@
     }
     content.innerHTML = DOMPurify.sanitize(view.html, { ADD_ATTR: ["target", "rel"] });
     applyI18n(content);
+    state.rawText = view.text;
+  }
+
+  // ---------- PPTX (PowerPoint): vendor/pptx.js ----------
+  let pptxUrls = [];
+  async function renderPptx(file) {
+    pptxUrls.forEach((u) => URL.revokeObjectURL(u)); pptxUrls = [];
+    let view;
+    try { view = await PptxView.render(await file.arrayBuffer()); }
+    catch (err) {
+      if (err && (err.code === "notPptx" || /zip|central|end of data|header/i.test(err.message || ""))) throw new Error(t("error.pptxInvalid"));
+      throw err;
+    }
+    pptxUrls = view.urls;
+    content.innerHTML = DOMPurify.sanitize(`<div class="pp-deck">${view.html}</div>`, { ADD_ATTR: ["data-slide"], ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|tel:|blob:)/i });
     state.rawText = view.text;
   }
 
