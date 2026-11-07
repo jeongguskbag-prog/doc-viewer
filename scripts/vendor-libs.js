@@ -14,6 +14,7 @@ const files = {
   "xlsx.full.min.js": "xlsx/dist/xlsx.full.min.js",
   "marked.min.js": "marked/marked.min.js",
   "purify.min.js": "dompurify/dist/purify.min.js",
+  "hwp-convert.mjs": "hwp-convert/dist/browser/hwp-convert.browser.mjs", // HWPX 읽기 · HWPX 내보내기
 };
 const dirs = {
   "pdfjs/cmaps": "pdfjs-dist/cmaps", // 한글·한자·일본어 PDF 글꼴 정보

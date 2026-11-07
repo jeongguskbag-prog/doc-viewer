@@ -145,6 +145,7 @@ public class FileIntentPlugin extends Plugin {
                 ext = "hwp"; break;
             case "application/hwp+zip":
             case "application/vnd.hancom.hwpx":
+            case "application/haansofthwpx":
                 ext = "hwpx"; break;
             case "text/markdown":
             case "text/x-markdown":
