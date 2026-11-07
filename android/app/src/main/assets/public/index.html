@@ -337,6 +337,8 @@
 <script src="vendor/codes.js"></script>
 <script src="vendor/pptx.js"></script>
 <script src="vendor/export.js"></script>
+<script src="lib/html2canvas.min.js"></script>
+<script src="vendor/pdfwriter.js"></script>
 <script src="i18n/ko.js"></script>
 <script src="i18n/en.js"></script>
 <script src="i18n/ja.js"></script>
@@ -1560,9 +1562,9 @@
 
   // 현재 파일에서 내보낼 형식 목록 (파일 종류에 따라 다름)
   function availableFormats(ext) {
-    if (IMAGE_EXTS.includes(ext)) return ["png", "pdf", "original"];
+    if (IMAGE_EXTS.includes(ext)) return ["pdfdirect", "png", "pdf", "original"];
     if (ext === "pdf") return ["hwpx", "txt", "md", "html", "docx", "csv", "xlsx", "png", "pdf", "original"];
-    return ["hwpx", "txt", "md", "html", "docx", "csv", "xlsx", "pdf", "original"];
+    return ["pdfdirect", "hwpx", "txt", "md", "html", "docx", "csv", "xlsx", "pdf", "original"];
   }
 
   function fillFormatSelect() {
@@ -1827,6 +1829,123 @@
     return true;
   }
 
+  // ---------- PDF 바로 만들기 (그림 PDF) ----------
+  // 화면에 보이는 문서(번역했다면 번역본)를 그림으로 만들어 A4 쪽으로 나눈 뒤 PDF 로 묶음.
+  const A4 = { w: 595.28, h: 841.89 };
+  async function makeDirectPdf() {
+    const ext = extOf(state.current.name);
+    let pages = [];
+    if (IMAGE_EXTS.includes(ext)) {
+      for (const src of await pageImages()) {
+        const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+        const c = document.createElement("canvas"); c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0);
+        const portrait = c.height >= c.width;
+        pages.push(await pdfPage(c, portrait ? A4.w : A4.h, portrait ? A4.h : A4.w, true));
+      }
+    } else if (ext === "pptx") {
+      for (const slide of content.querySelectorAll(".pp-slide")) {
+        const c = await html2canvas(slide, { scale: 2, backgroundColor: "#ffffff", logging: false });
+        pages.push(await pdfPage(c, A4.h, A4.h * c.height / c.width, false));
+      }
+    } else {
+      pages = await htmlToPdfPages();
+    }
+    if (!pages.length) throw new Error(t("export.noText"));
+    return new Blob([PdfWriter.build(pages, baseName(state.current.name))], { type: "application/pdf" });
+  }
+
+  // 그림을 쪽 크기 비율에 맞춰 흰 바탕 가운데에 놓고 JPEG 로
+  async function pdfPage(canvas, pw, ph, fit) {
+    let c = canvas;
+    if (fit) {
+      const W = Math.round(Math.max(canvas.width, canvas.height * pw / ph)), H = Math.round(W * ph / pw);
+      c = document.createElement("canvas"); c.width = W; c.height = H;
+      const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
+      g.drawImage(canvas, (W - canvas.width) / 2, (H - canvas.height) / 2);
+    }
+    return { jpeg: await PdfWriter.canvasToJpeg(c, 0.8), w: c.width, h: c.height, pw, ph };
+  }
+
+  // 글 문서: A4 폭(794px)의 화면 밖 상자에 그대로 그린 뒤 쪽으로 자름. 자르는 곳은 빈 줄을 찾아 글자가 잘리지 않게 함
+  async function htmlToPdfPages() {
+    const box = document.createElement("div");
+    box.style.cssText = "position:fixed;left:-10000px;top:0;width:794px;padding:0;background:#fff;color:#000;font-size:15px;line-height:1.6;";
+    const inner = document.createElement("div");
+    inner.id = "pdfRender";
+    inner.style.cssText = "padding:0 8px;";
+    if (state.sheetPlain) {
+      inner.appendChild(state.sheetPlain.cloneNode(true));
+    } else {
+      const clone = content.cloneNode(true);
+      clone.removeAttribute("id");
+      clone.querySelectorAll("#viewTools, .pdf-hit, mark.hit").forEach((el) => el.replaceWith(...(el.matches("mark") ? [document.createTextNode(el.textContent)] : [])));
+      inner.appendChild(clone);
+    }
+    // 문서 창(#content) 전용 모양을 PDF 용 상자에도 적용 (줄바꿈·링크 색·표)
+    const style = document.createElement("style");
+    style.textContent = "#pdfRender pre{white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;background:#fff;padding:0;font:inherit}" +
+      "#pdfRender a{color:#2563eb}#pdfRender img{max-width:100%;height:auto}#pdfRender p,#pdfRender div{overflow-wrap:anywhere}" +
+      "#pdfRender table{border-collapse:collapse;max-width:100%}#pdfRender h1,#pdfRender h2,#pdfRender h3{line-height:1.3}";
+    box.appendChild(style);
+    inner.querySelectorAll("table").forEach((tb) => { tb.style.borderCollapse = "collapse"; tb.style.maxWidth = "100%"; });
+    inner.querySelectorAll("td, th").forEach((c) => { c.style.border = "1px solid #999"; c.style.padding = "3px 6px"; c.style.color = "#000"; });
+    inner.querySelectorAll("img").forEach((im) => { im.style.maxWidth = "100%"; });
+    box.appendChild(inner);
+    document.body.appendChild(box);
+    try {
+      const cssH = box.scrollHeight;
+      const scale = Math.max(1, Math.min(1.5, 30000 / Math.max(cssH, 1))); // 1.5배: 약 150dpi, 글자 선명도와 파일 크기의 균형
+      if (cssH * scale > 32000) return await pagesByFixedCuts(box, cssH);
+      const full = await html2canvas(box, { scale, backgroundColor: "#ffffff", logging: false, windowWidth: 794 });
+      return await sliceToPages(full);
+    } finally {
+      box.remove();
+    }
+  }
+
+  async function sliceToPages(full) {
+    const margin = Math.round(full.width * 0.06);
+    const pageW = full.width + margin * 2, pageH = Math.round(pageW * A4.h / A4.w);
+    const contentH = pageH - margin * 2;
+    const g = full.getContext("2d", { willReadFrequently: true });
+    const pages = [];
+    let y = 0;
+    while (y < full.height - 2) {
+      let cut = Math.min(y + contentH, full.height);
+      if (cut < full.height) {
+        // 아래쪽 15% 안에서 완전히 빈(흰) 가로줄을 찾아 그 위치에서 자름
+        const search = Math.round(contentH * 0.15);
+        const strip = g.getImageData(0, cut - search, full.width, search).data;
+        for (let row = search - 1; row >= 0; row--) {
+          let blank = true;
+          for (let x = 0; x < full.width; x += 2) {
+            const i = (row * full.width + x) * 4;
+            if (strip[i] < 245 || strip[i + 1] < 245 || strip[i + 2] < 245) { blank = false; break; }
+          }
+          if (blank) { cut = cut - search + row; break; }
+        }
+      }
+      const c = document.createElement("canvas"); c.width = pageW; c.height = pageH;
+      const pg = c.getContext("2d"); pg.fillStyle = "#fff"; pg.fillRect(0, 0, pageW, pageH);
+      pg.drawImage(full, 0, y, full.width, cut - y, margin, margin, full.width, cut - y);
+      pages.push(await pdfPage(c, A4.w, A4.h, false));
+      y = cut;
+    }
+    return pages;
+  }
+
+  // 아주 긴 문서: 쪽 높이 단위로 나눠 그림 (캔버스 크기 한도 회피)
+  async function pagesByFixedCuts(box, cssH) {
+    const contentCss = Math.round(794 * 0.88 * A4.h / A4.w);
+    const pages = [];
+    for (let y = 0; y < cssH; y += contentCss) {
+      const part = await html2canvas(box, { scale: 1.5, backgroundColor: "#ffffff", logging: false, windowWidth: 794, y, height: Math.min(contentCss, cssH - y) });
+      pages.push(...await sliceToPages(part));
+    }
+    return pages;
+  }
+
   function saveBlob(blob, name) {
     const a = document.createElement("a");
     const url = URL.createObjectURL(blob);
@@ -1840,6 +1959,7 @@
     const file = state.current;
     const name = baseName(file.name);
     if (fmt === "original") return { blob: file, name: file.name };
+    if (fmt === "pdfdirect") return { blob: await makeDirectPdf(), name: name + ".pdf" };
     if (fmt === "png") {
       const imgs = await pageImages();
       if (!imgs.length) throw new Error(t("export.noPng"));
