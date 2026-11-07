@@ -1,7 +1,7 @@
 // 简体中文资源。键名必须与 ko.js 一致。
 window.I18N = window.I18N || {};
 window.I18N.zh = {
-  "app.title": "文档查看器 (MVP)",
+  "app.title": "文档查看器",
   "app.heading": "📄 文档查看器",
   "header.search": "搜索文档内容",
   "header.theme": "🌓 主题",
@@ -245,4 +245,22 @@ window.I18N.zh = {
   "zip.engine": "无法加载 7z/RAR 读取功能。请重新启动应用。",
   "video.unsupported": "无法播放此视频。可能使用了本设备不支持的编码（如 AVI、WMV、部分 MKV）。请保存后用视频应用打开。",
   "video.info": "🎬 {name} · {size}",
+  "a11y.skip": "跳到正文",
+  "a11y.docArea": "文档查看区域",
+  "a11y.search": "在文档中搜索文字",
+  "a11y.zoomOut": "缩小文字",
+  "a11y.zoomIn": "放大文字",
+  "a11y.closeFull": "关闭全屏查看",
+  "a11y.lang": "界面语言",
+  "a11y.fileType": "要选择的文件类型",
+  "a11y.pdfPage": "第 {p} 页，共 {n} 页",
+  "a11y.pdfNoText": "无文字信息的图片(扫描)页",
+  "a11y.sheetTabs": "工作表列表",
+  "a11y.opened": "已打开 {name}",
+  "a11y.title": "♿ 无障碍",
+  "a11y.textSize": "屏幕文字大小",
+  "a11y.sizeDesc": "放大整个应用界面(文字和按钮)。设备的字体大小设置也会一并生效。",
+  "a11y.contrast": "高对比度模式",
+  "a11y.contrastDesc": "加大文字与背景的明暗差，方便低视力用户阅读。可与浅色/深色主题同时使用。",
+  "img.noAlt": "文档中的图片",
 };

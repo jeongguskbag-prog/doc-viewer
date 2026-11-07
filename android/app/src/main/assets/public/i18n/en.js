@@ -1,7 +1,7 @@
 // English resources. Keys must match ko.js.
 window.I18N = window.I18N || {};
 window.I18N.en = {
-  "app.title": "Document Viewer (MVP)",
+  "app.title": "Document Viewer",
   "app.heading": "📄 Document Viewer",
   "header.search": "Search text in document",
   "header.theme": "🌓 Theme",
@@ -245,4 +245,22 @@ window.I18N.en = {
   "zip.engine": "Couldn't load the 7z/RAR reader. Please restart the app.",
   "video.unsupported": "This video can't be played. It may use a codec this device doesn't support (e.g. AVI, WMV, some MKV). Save it and open it in a video app.",
   "video.info": "🎬 {name} · {size}",
+  "a11y.skip": "Skip to content",
+  "a11y.docArea": "Document view",
+  "a11y.search": "Search text in document",
+  "a11y.zoomOut": "Smaller text",
+  "a11y.zoomIn": "Larger text",
+  "a11y.closeFull": "Close full view",
+  "a11y.lang": "Display language",
+  "a11y.fileType": "File type to choose",
+  "a11y.pdfPage": "Page {p} of {n}",
+  "a11y.pdfNoText": "image-only (scanned) page with no text",
+  "a11y.sheetTabs": "Sheets",
+  "a11y.opened": "Opened {name}",
+  "a11y.title": "♿ Accessibility",
+  "a11y.textSize": "Screen text size",
+  "a11y.sizeDesc": "Enlarges the whole app screen (text and buttons). Your device font-size setting is applied too.",
+  "a11y.contrast": "High-contrast mode",
+  "a11y.contrastDesc": "Increases the contrast between text and background for low-vision users. Works with light and dark themes.",
+  "img.noAlt": "Image in document",
 };

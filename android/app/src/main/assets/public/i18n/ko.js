@@ -1,7 +1,7 @@
 // 한국어 리소스 (기준 언어). 키는 en.js와 동일해야 합니다.
 window.I18N = window.I18N || {};
 window.I18N.ko = {
-  "app.title": "문서 통합 뷰어 (MVP)",
+  "app.title": "문서 통합 뷰어",
   "app.heading": "📄 문서 통합 뷰어",
   "header.search": "문서 본문 검색",
   "header.theme": "🌓 테마",
@@ -245,4 +245,22 @@ window.I18N.ko = {
   "zip.engine": "7z·RAR 읽기 기능을 불러오지 못했습니다. 앱을 다시 실행해 주세요.",
   "video.unsupported": "이 동영상은 재생할 수 없습니다. 휴대폰·PC 가 지원하지 않는 코덱(예: AVI·WMV·일부 MKV)일 수 있습니다. '저장'한 뒤 동영상 앱으로 열어 주세요.",
   "video.info": "🎬 {name} · {size}",
+  "a11y.skip": "본문 바로가기",
+  "a11y.docArea": "문서 보기 영역",
+  "a11y.search": "문서에서 글자 찾기",
+  "a11y.zoomOut": "글자 작게",
+  "a11y.zoomIn": "글자 크게",
+  "a11y.closeFull": "전체 보기 닫기",
+  "a11y.lang": "화면 언어",
+  "a11y.fileType": "고를 파일 형식",
+  "a11y.pdfPage": "{n}쪽 중 {p}쪽",
+  "a11y.pdfNoText": "글자 정보가 없는 그림(스캔) 쪽입니다",
+  "a11y.sheetTabs": "시트 목록",
+  "a11y.opened": "{name} 문서를 열었습니다",
+  "a11y.title": "♿ 접근성",
+  "a11y.textSize": "화면 글자 크기",
+  "a11y.sizeDesc": "앱 화면 전체(글자·단추)를 키웁니다. 휴대폰의 글꼴 크기 설정도 함께 반영됩니다.",
+  "a11y.contrast": "고대비 모드",
+  "a11y.contrastDesc": "글자와 배경의 명암 차이를 크게 해 저시력 사용자도 읽기 쉽게 합니다. 테마(밝게/어둡게)와 함께 쓸 수 있습니다.",
+  "img.noAlt": "문서에 들어 있는 그림",
 };

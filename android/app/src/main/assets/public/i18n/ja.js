@@ -1,7 +1,7 @@
 // 日本語リソース。キーは ko.js と一致させてください。
 window.I18N = window.I18N || {};
 window.I18N.ja = {
-  "app.title": "文書統合ビューア (MVP)",
+  "app.title": "文書統合ビューア",
   "app.heading": "📄 文書統合ビューア",
   "header.search": "文書本文を検索",
   "header.theme": "🌓 テーマ",
@@ -245,4 +245,22 @@ window.I18N.ja = {
   "zip.engine": "7z・RAR の読み込み機能を読み込めませんでした。アプリを再起動してください。",
   "video.unsupported": "この動画は再生できません。端末が対応していないコーデック(AVI・WMV・一部の MKV など)の可能性があります。保存してから動画アプリで開いてください。",
   "video.info": "🎬 {name} · {size}",
+  "a11y.skip": "本文へ移動",
+  "a11y.docArea": "文書表示エリア",
+  "a11y.search": "文書内の文字を検索",
+  "a11y.zoomOut": "文字を小さく",
+  "a11y.zoomIn": "文字を大きく",
+  "a11y.closeFull": "全画面表示を閉じる",
+  "a11y.lang": "表示言語",
+  "a11y.fileType": "選択するファイルの種類",
+  "a11y.pdfPage": "{p} / {n} ページ",
+  "a11y.pdfNoText": "文字情報のない画像(スキャン)ページです",
+  "a11y.sheetTabs": "シート一覧",
+  "a11y.opened": "{name} を開きました",
+  "a11y.title": "♿ アクセシビリティ",
+  "a11y.textSize": "画面の文字サイズ",
+  "a11y.sizeDesc": "アプリ画面全体(文字・ボタン)を拡大します。端末のフォントサイズ設定も反映されます。",
+  "a11y.contrast": "ハイコントラストモード",
+  "a11y.contrastDesc": "文字と背景の明暗差を大きくし、ロービジョンの方にも読みやすくします。テーマ(明/暗)と併用できます。",
+  "img.noAlt": "文書内の画像",
 };
