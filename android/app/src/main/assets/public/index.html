@@ -40,6 +40,9 @@
   #viewer { overflow: auto; padding: 24px; min-width: 0; }
   #content { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 24px; min-height: 80vh; max-width: 900px; margin: 0 auto; overflow: auto; }
   #content img { max-width: 100%; }
+  .vid-wrap { display: flex; flex-direction: column; gap: 8px; }
+  .vid-wrap video { width: 100%; max-height: 75vh; background: #000; border-radius: 8px; }
+  .vid-info { color: var(--muted); font-size: 0.9em; word-break: break-all; }
   #content table { border-collapse: collapse; font-size: 13px; }
   #content td, #content th { border: 1px solid var(--border); padding: 4px 8px; }
   #content pre { background: var(--bg); padding: 12px; overflow: auto; border-radius: 6px; white-space: pre-wrap; word-break: break-word; }
@@ -319,7 +322,8 @@
           <option value="ppt" data-i18n="pick.ppt">PowerPoint (PPTX)</option>
           <option value="text" data-i18n="pick.text">Text (TXT/MD)</option>
           <option value="image" data-i18n="pick.image">Images</option>
-          <option value="archive" data-i18n="pick.archive">Archives (ZIP/ALZ/EGG/TAR/GZ)</option>
+          <option value="archive" data-i18n="pick.archive">Archives (ZIP/ALZ/EGG/7Z/RAR/TAR/GZ)</option>
+          <option value="video" data-i18n="pick.video">Videos (MP4/WebM/MOV/MKV)</option>
         </select>
       </div>
       <input type="file" id="fileInput" multiple hidden>
@@ -368,6 +372,7 @@
 <script src="vendor/lea.js"></script>
 <script src="vendor/alzegg.js"></script>
 <script src="vendor/archive.js"></script>
+<script src="vendor/sevenrar.js"></script>
 <!-- HWPX 읽기·쓰기 (hwp-convert, MIT). ES 모듈이라 준비되면 window.HwpConvert 로 노출 -->
 <script type="module">
   import * as HC from "./lib/hwp-convert.mjs";
@@ -512,8 +517,10 @@
     ppt: [".pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"],
     text: [".txt", ".md", "text/plain", "text/markdown", "text/x-markdown"],
     image: [".png", ".jpg", ".jpeg", ".gif", ".webp", "image/png", "image/jpeg", "image/gif", "image/webp"],
-    archive: [".zip", ".tar", ".gz", ".tgz", ".alz", ".egg", "application/x-alz", "application/x-egg", "application/x-alz-compressed", "application/zip", "application/x-zip-compressed", "application/x-zip",
-      "application/gzip", "application/x-gzip", "application/x-tar", "application/x-compressed-tar", "application/x-gtar"],
+    archive: [".zip", ".tar", ".gz", ".tgz", ".alz", ".egg", ".7z", ".rar", "application/x-alz", "application/x-egg", "application/x-alz-compressed", "application/zip", "application/x-zip-compressed", "application/x-zip",
+      "application/gzip", "application/x-gzip", "application/x-tar", "application/x-compressed-tar", "application/x-gtar",
+      "application/x-7z-compressed", "application/vnd.rar", "application/x-rar-compressed", "application/x-rar"],
+    video: [".mp4", ".m4v", ".webm", ".mov", ".mkv", "video/mp4", "video/webm", "video/quicktime", "video/x-matroska", "video/x-m4v"],
   };
   function applyPickType(kind) {
     const accept = kind === "all" ? "*/*"
@@ -530,8 +537,9 @@
   });
 
   // ---------- 확장자가 없거나 낯선 파일: 내용으로 형식 판별 ----------
-  const KNOWN_EXTS = ["pdf", "hwp", "hwpx", "docx", "pptx", "xlsx", "xls", "csv", "md", "txt", "png", "jpg", "jpeg", "gif", "webp", "zip", "tar", "gz", "tgz", "alz", "egg"];
-  const ARCHIVE_EXTS = ["zip", "tar", "gz", "tgz", "alz", "egg"];
+  const ARCHIVE_EXTS = ["zip", "tar", "gz", "tgz", "alz", "egg", "7z", "rar"];
+  const VIDEO_EXTS = ["mp4", "m4v", "webm", "mov", "mkv"];
+  const KNOWN_EXTS = ["pdf", "hwp", "hwpx", "docx", "pptx", "xlsx", "xls", "csv", "md", "txt", "png", "jpg", "jpeg", "gif", "webp", ...ARCHIVE_EXTS, ...VIDEO_EXTS];
   async function sniffExt(file) {
     const head = new Uint8Array(await file.slice(0, 8192).arrayBuffer());
     const starts = (...b) => b.every((v, i) => head[i] === v);
@@ -558,6 +566,13 @@
     if (starts(0x45, 0x47, 0x47, 0x41)) return "egg";              // EGGA (알집)
     if (starts(0x41, 0x4c, 0x5a, 0x01)) return "alz";              // ALZ (알집)
     if (head.length > 262 && String.fromCharCode(...head.subarray(257, 262)) === "ustar") return "tar";
+    if (window.SevenRar) { const k = SevenRar.kindOf(head); if (k) return k; } // 7z · RAR
+    // 동영상: MP4·MOV (ftyp 상자), WebM·MKV (EBML 머리글)
+    if (String.fromCharCode(...head.subarray(4, 8)) === "ftyp") {
+      const brand = String.fromCharCode(...head.subarray(8, 12));
+      if (!/^(heic|heix|hevc|heim|heis|mif1|msf1|avif|avis)$/.test(brand)) return brand === "qt  " ? "mov" : "mp4"; // HEIC·AVIF 사진은 제외
+    }
+    if (starts(0x1a, 0x45, 0xdf, 0xa3)) return String.fromCharCode(...head.subarray(0, 64)).includes("webm") ? "webm" : "mkv";
     // 글자 파일: 앞부분에 0 바이트가 없으면 텍스트로 봄
     if (head.length && !head.includes(0)) return "txt";
     return null;
@@ -593,6 +608,7 @@
   // ---------- 파일 열기 분기 ----------
   async function openFile(file) {
     const myId = ++state.renderId; // 빠르게 여러 파일을 눌러도 마지막 선택만 반영
+    stopVideo(); // 다른 파일을 열면 재생 중인 동영상을 멈추고 메모리 정리
     state.current = file;
     renderFileList();
     resetControls();
@@ -620,8 +636,10 @@
         case "hwp":  await renderHwp(file); break;
         case "hwpx": await renderHwpx(file); break;
         case "pptx": await renderPptx(file); break;
-        case "zip": case "tar": case "gz": case "tgz": case "alz": case "egg":
+        case "zip": case "tar": case "gz": case "tgz": case "alz": case "egg": case "7z": case "rar":
           await renderArchive(file); break;
+        case "mp4": case "m4v": case "webm": case "mov": case "mkv":
+          await renderVideo(file); break;
         case "docx": await renderDocx(file); break;
         case "xlsx":
         case "xls":
@@ -746,17 +764,23 @@
   const EXTRACT_MAX_FILES = 5000, EXTRACT_MAX_BYTES = 2 * 1024 * 1024 * 1024;
   const fileIcon = (name) => {
     const e = extOf(name);
-    return ({ pdf: "📕", hwp: "📘", hwpx: "📘", docx: "📄", xlsx: "📊", xls: "📊", csv: "📊", pptx: "📙", txt: "📝", md: "📝", zip: "📦", tar: "📦", gz: "📦", tgz: "📦", alz: "📦", egg: "📦" })[e]
-      || (IMAGE_EXTS.includes(e) ? "🖼" : "📎");
+    return ({ pdf: "📕", hwp: "📘", hwpx: "📘", docx: "📄", xlsx: "📊", xls: "📊", csv: "📊", pptx: "📙", txt: "📝", md: "📝" })[e]
+      || (ARCHIVE_EXTS.includes(e) ? "📦" : VIDEO_EXTS.includes(e) ? "🎬" : IMAGE_EXTS.includes(e) ? "🖼" : "📎");
   };
   function archiveErrorText(e) {
-    const map = { split: "zip.split", needPassword: "zip.needPassword", badPassword: "zip.badPassword", tooBig: "zip.tooBig", tooMany: "zip.tooMany", method: "zip.method", corrupt: "zip.corrupt", notArchive: "zip.corrupt" };
+    const map = { split: "zip.split", splitMulti: "zip.splitMulti", encUnsupported: "zip.encUnsupported", engine: "zip.engine",
+      needPassword: "zip.needPassword", badPassword: "zip.badPassword", tooBig: "zip.tooBig", tooMany: "zip.tooMany", method: "zip.method", corrupt: "zip.corrupt", notArchive: "zip.corrupt" };
     return e && map[e.code] ? t(map[e.code]) : (e && e.message) || String(e);
   }
 
   async function renderArchive(file) {
     let arc;
-    try { arc = ArchiveReader.open(new Uint8Array(await file.arrayBuffer()), file.name); }
+    try {
+      // 7z · RAR 은 vendor/sevenrar.js (libarchive.js, 처음 쓸 때 불러옴). 파일 전체를 미리 읽지 않음
+      const head = new Uint8Array(await file.slice(0, 64).arrayBuffer());
+      if (window.SevenRar && SevenRar.kindOf(head)) arc = await SevenRar.open(file, head);
+      else arc = ArchiveReader.open(new Uint8Array(await file.arrayBuffer()), file.name);
+    }
     catch (e) { throw new Error(archiveErrorText(e)); }
     const entries = arc.entries.filter((e) => !e.dir).sort((a, b) => a.path.localeCompare(b.path, "ko"));
     state.archive = { name: file.name, entries, password: null };
@@ -1145,6 +1169,31 @@
     const url = URL.createObjectURL(file);
     content.innerHTML = `<img src="${url}" alt="${escapeHtml(file.name)}">`;
     state.rawText = null;
+  }
+
+  // ---------- 동영상 (간단 재생): 브라우저 기본 <video> ----------
+  // 파일을 통째로 읽지 않고 blob 주소로 넘기므로 큰 동영상도 필요한 부분만 읽으며 재생·이동함
+  let videoUrl = null;
+  function stopVideo() {
+    const v = content.querySelector("video.doc-video");
+    if (v) { v.pause(); v.removeAttribute("src"); v.load(); }
+    if (videoUrl) { URL.revokeObjectURL(videoUrl); videoUrl = null; }
+  }
+  async function renderVideo(file) {
+    videoUrl = URL.createObjectURL(file);
+    content.innerHTML = `<div class="vid-wrap">
+      <video class="doc-video" controls playsinline preload="metadata" src="${videoUrl}"></video>
+      <div class="vid-info">${escapeHtml(t("video.info", { name: file.name, size: formatSize(file.size) }))}</div>
+      <div class="vid-msg error" hidden>${escapeHtml(t("video.unsupported"))}</div></div>`;
+    const v = content.querySelector("video.doc-video");
+    // 코덱을 못 읽으면(AVI·WMV·일부 MKV 등) 오류 안내 — 소리만 나오고 화면이 없는 경우도 같이 안내
+    const fail = () => { const m = content.querySelector(".vid-msg"); if (m) m.hidden = false; };
+    v.addEventListener("error", fail);
+    v.addEventListener("loadedmetadata", () => { if (!v.videoWidth && !v.videoHeight && v.duration > 0) fail(); });
+    state.rawText = null;
+    $("viewTools").hidden = true;          // 번역·전체 보기는 동영상에 쓸모가 없음
+    $("docSearch").disabled = true;
+    $("zoomIn").disabled = $("zoomOut").disabled = true;
   }
 
   // ---------- 인코딩 판별 (UTF-8 실패 시 CP949/EUC-KR) ----------
@@ -1820,7 +1869,7 @@
 
   // 현재 파일에서 내보낼 형식 목록 (파일 종류에 따라 다름)
   function availableFormats(ext) {
-    if (ARCHIVE_EXTS.includes(ext)) return ["original"];
+    if (ARCHIVE_EXTS.includes(ext) || VIDEO_EXTS.includes(ext)) return ["original"];
     if (IMAGE_EXTS.includes(ext)) return ["pdfdirect", "png", "pdf", "original"];
     if (ext === "pdf") return ["hwpx", "txt", "md", "html", "docx", "csv", "xlsx", "png", "pdf", "original"];
     return ["pdfdirect", "hwpx", "txt", "md", "html", "docx", "csv", "xlsx", "pdf", "original"];

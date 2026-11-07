@@ -17,6 +17,10 @@ const files = {
   "fflate.min.js": "fflate/umd/index.js", // 압축 파일(ZIP·GZ) 풀기
   "html2canvas.min.js": "html2canvas/dist/html2canvas.min.js", // PDF 바로 만들기: 화면 → 그림
   "hwp-convert.mjs": "hwp-convert/dist/browser/hwp-convert.browser.mjs", // HWPX 읽기 · HWPX 내보내기
+  // 7z · RAR 풀기 (libarchive WebAssembly). 세 파일이 같은 폴더에 있어야 함 (모듈이 옆의 worker·wasm 을 찾음)
+  "libarchive/libarchive.js": "libarchive.js/dist/libarchive.js",
+  "libarchive/worker-bundle.js": "libarchive.js/dist/worker-bundle.js",
+  "libarchive/libarchive.wasm": "libarchive.js/dist/libarchive.wasm",
 };
 const dirs = {
   "pdfjs/cmaps": "pdfjs-dist/cmaps", // 한글·한자·일본어 PDF 글꼴 정보

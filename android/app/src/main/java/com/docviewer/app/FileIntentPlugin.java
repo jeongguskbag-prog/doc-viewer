@@ -150,6 +150,12 @@ public class FileIntentPlugin extends Plugin {
             case "text/markdown":
             case "text/x-markdown":
                 ext = "md"; break;
+            case "application/x-7z-compressed":
+                ext = "7z"; break;
+            case "application/vnd.rar":
+            case "application/x-rar-compressed":
+            case "application/x-rar":
+                ext = "rar"; break;
             default:
                 ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime);
         }

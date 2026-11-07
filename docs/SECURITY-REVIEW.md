@@ -124,6 +124,9 @@
   암호 ZIP(ZipCrypto, WinZip AES)은 사용자가 입력한 암호로 기기 안에서만 풀며, 암호는 앱이 닫히면 사라짐 (저장하지 않음)
 - **알집 압축(ALZ·EGG)**: 기기 안에서만 풂 (`vendor/alzegg.js`). 압축 방식 Deflate·Bzip2·LZMA·AZO, 암호 ZipCrypto·AES-128/256·LEA-128/256 을 지원하며
   같은 크기·항목 수·경로 정리 안전장치를 적용. 블록마다 CRC32, AES/LEA 는 HMAC-SHA1 인증 코드까지 확인해 손상·위조를 걸러냄. 분할 압축은 지원하지 않음
+- **7z·RAR(RAR4·RAR5)**: 기기 안에서만 풂 (`vendor/sevenrar.js`, libarchive.js — libarchive 를 WebAssembly 로 옮긴 것). 앱 안에 포함된 파일(`lib/libarchive/`)만 쓰고, 처음 7z·RAR 을 열 때 불러와 별도 작업 스레드(Web Worker)에서 풂.
+  ZIP 과 같은 512MB·2만 개·"모두 풀기" 상한과 경로 정리를 적용. 분할 압축(머리글의 볼륨 표시·`.part1.rar`·`.7z.001`)과 암호 걸린 7z·RAR 은 열지 않고 안내만 함
+- **동영상(MP4·WebM·MOV·MKV)**: 기기 안에서 브라우저 기본 `<video>` 로만 재생 (추가 라이브러리 없음). 파일을 `blob:` 주소로 넘겨 필요한 부분만 읽음. 망분리 모드의 `media-src 'self' blob:` 정책 안에서 동작
 - 암호가 걸린 HWP/HWPX 는 열지 않고 안내만 표시
 - **배포용 HWP 문서**: 공개된 HWP 5.0 형식 설명에 따라 기기 안에서만 본문을 풀어 보여 줌 (외부 전송 없음, `vendor/hwpdist.js`).
   작성자가 편집·복사·인쇄를 막으려고 만든 문서이므로 **보기 전용**으로 열고 저장·내보내기·인쇄·이메일·팩스를 끔
@@ -144,6 +147,7 @@
 | hwp-convert 1.13.0 (JSZip, pako, cfb 등 포함) | HWP·HWPX 보기, HWPX 내보내기 | MIT (JSZip: MIT/GPLv3 중 MIT 선택, pako: MIT·Zlib, cfb: Apache-2.0) |
 | html2canvas 1.4.1 | PDF 바로 만들기 | MIT |
 | fflate 0.8.3 | 압축 파일(ZIP·GZ) 풀기 | MIT |
+| libarchive.js 2.0.2 (libarchive WebAssembly, comlink 포함) | 7z·RAR 풀기 | MIT (libarchive: BSD-2-Clause, comlink: Apache-2.0) |
 | AZO 복호기 (`vendor/azo.js`) | 알집 EGG 고압축(AZO) 풀기 — EggDotNet(Andrew Kolman) 코드를 옮김 | MIT |
 | bzip2·LZMA·LEA·AES (`vendor/bzip2.js`, `lzma.js`, `lea.js`, `aes.js`) | 알집·ZIP·배포용 HWP 풀기 — 공개 표준대로 이 프로젝트에서 직접 작성 | (자체 코드) |
 | docx | Word 내보내기 | MIT |
