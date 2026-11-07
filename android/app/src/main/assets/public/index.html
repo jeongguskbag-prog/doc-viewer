@@ -66,6 +66,16 @@
   #trMenu button:hover, #trMenu button.on { background: var(--bg); }
   #trMenu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
   .ag-badge { font-size: 12px; font-weight: 600; color: #065f46; background: #d1fae5; border: 1px solid #6ee7b7; border-radius: 999px; padding: 2px 8px; vertical-align: middle; white-space: nowrap; }
+  #aboutDialog { overflow: auto; }
+  .about-ver { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+  .about-box { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; background: var(--bg); }
+  #aboutDialog h3 { font-size: 14px; margin: 0 0 6px; }
+  .about-hancom { font-weight: 600; margin: 0 0 6px; line-height: 1.5; }
+  .about-box p:empty { display: none; }
+  .oss-item { border-bottom: 1px solid var(--border); }
+  .oss-item summary { cursor: pointer; padding: 9px 2px; font-size: 13px; line-height: 1.4; }
+  .oss-item summary small { color: var(--muted); }
+  .oss-item pre { white-space: pre-wrap; word-break: break-word; font-size: 11px; max-height: 40vh; overflow: auto; background: var(--bg); padding: 10px; border-radius: 6px; margin: 0 0 10px; }
   .set-row { padding: 12px 0; border-top: 1px solid var(--border); }
   .set-row:first-of-type { border-top: 0; }
   .set-switch { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
@@ -262,6 +272,35 @@
     <button class="ghost" id="trEngineBtn" data-i18n="settings.trEngineBtn">Change engine / API key</button>
   </div>
   <div class="ex-hint" id="editionInfo" style="margin-top:10px"></div>
+  <button class="ghost" id="aboutBtn" style="margin-top:6px" data-i18n="about.open">ℹ About · open-source licenses</button>
+</dialog>
+
+<!-- 앱 정보 · 출처 표기 · 오픈소스 라이선스 -->
+<dialog id="aboutDialog" aria-labelledby="aboutTitle" style="width:min(640px,94vw);max-height:88vh;border:1px solid var(--border);border-radius:10px;background:var(--panel);color:var(--text);padding:16px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <strong id="aboutTitle" data-i18n="about.title">ℹ About</strong>
+    <button class="ghost" id="aboutClose" data-i18n="export.close">Close</button>
+  </div>
+  <div id="aboutVersion" class="about-ver"></div>
+  <section class="about-box" aria-labelledby="aboutHancomH">
+    <h3 id="aboutHancomH" data-i18n="about.sourceTitle">Source notice</h3>
+    <p class="about-hancom">본 제품은 한글과컴퓨터의 한/글 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.</p>
+    <p class="ex-hint" data-i18n="about.hancomTr"></p>
+    <p class="ex-hint" data-i18n="about.hwpx"></p>
+  </section>
+  <section class="about-box" aria-labelledby="aboutTmH">
+    <h3 id="aboutTmH" data-i18n="about.tmTitle">Trademarks</h3>
+    <p class="ex-hint" data-i18n="about.trademarks"></p>
+  </section>
+  <section class="about-box" aria-labelledby="aboutOwnH">
+    <h3 id="aboutOwnH" data-i18n="about.ownTitle">Implemented in this project</h3>
+    <p class="ex-hint" data-i18n="about.own"></p>
+  </section>
+  <section aria-labelledby="aboutOssH">
+    <h3 id="aboutOssH" data-i18n="about.ossTitle">Open-source software</h3>
+    <p class="ex-hint" data-i18n="about.ossIntro"></p>
+    <div id="aboutOss"><div class="empty" data-i18n="viewer.loading">Loading…</div></div>
+  </section>
 </dialog>
 
 <dialog id="exportDialog" style="width:min(520px,92vw);border:1px solid var(--border);border-radius:10px;background:var(--panel);color:var(--text);padding:16px">
@@ -1586,6 +1625,33 @@
     $("editionInfo").textContent = t("settings.edition", { ed: t("edition." + ed) });
   }
   $("settingsBtn").onclick = () => { applyAirgapUi(); $("settingsDialog").showModal(); };
+
+  // ---------- 앱 정보 · 출처 표기 · 오픈소스 라이선스 (lib/licenses.json, 앱 안 파일이라 인터넷 없이 보임) ----------
+  let licenseData = null;
+  async function openAbout() {
+    const cfg = window.APP_CONFIG || {};
+    $("aboutVersion").textContent = t("about.version", { v: cfg.version || "-", ed: t("edition." + (cfg.edition || "standard")) });
+    $("aboutDialog").showModal();
+    if (licenseData) return;
+    const box = $("aboutOss");
+    try {
+      const res = await fetch("lib/licenses.json");
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      licenseData = await res.json();
+      box.innerHTML = "";
+      for (const c of licenseData.components) {
+        const d = document.createElement("details");
+        d.className = "oss-item";
+        const purpose = t("lic.purpose." + c.purpose);
+        d.innerHTML = `<summary><strong>${escapeHtml(c.name)}</strong> ${escapeHtml(c.version || "")}<br><small>${escapeHtml(c.license)} · ${escapeHtml(purpose)}</small></summary><pre>${escapeHtml(c.text || c.license)}</pre>`;
+        box.appendChild(d);
+      }
+    } catch (e) {
+      box.innerHTML = `<div class="error">${escapeHtml(t("about.loadFail"))}</div>`;
+    }
+  }
+  $("aboutBtn").onclick = () => { $("settingsDialog").close(); openAbout(); };
+  $("aboutClose").onclick = () => $("aboutDialog").close();
   $("settingsClose").onclick = () => $("settingsDialog").close();
   $("trEngineBtn").onclick = () => { $("trSettings").click(); applyAirgapUi(); };
   $("airgapToggle").onchange = (e) => {
