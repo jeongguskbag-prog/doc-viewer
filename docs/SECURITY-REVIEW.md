@@ -102,6 +102,7 @@
 | 키 | 내용 |
 |---|---|
 | `viewer.lang` | 화면 언어 |
+| `viewer.pickType` | 파일 선택 화면에서 마지막으로 고른 형식 |
 | `viewer.airgap` | 망분리 모드 켜짐/꺼짐 (일반판만) |
 | `viewer.trConsent` | 번역 전송 동의 여부 |
 | `viewer.trKey` | Google 번역 API 키 (사용자가 넣은 경우) — **암호화하지 않고 저장** |

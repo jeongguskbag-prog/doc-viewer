@@ -1,6 +1,6 @@
 [package]
 name = "doc-viewer"
-version = "2.2.0"
+version = "2.3.0"
 description = "Document Viewer (문서 통합 뷰어) for Windows"
 edition = "2021"
 publish = false

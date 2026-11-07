@@ -30,6 +30,8 @@
   aside.links { border-right: 0; border-left: 1px solid var(--border); }
   aside h2 { font-size: 13px; color: var(--muted); margin: 6px 0 8px; font-weight: 600; }
   .drop { border: 2px dashed var(--border); border-radius: 10px; padding: 18px; text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+  .pick-row { display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  .pick-row select { padding: 7px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 13px; max-width: 100%; }
   .drop.over { border-color: var(--accent); color: var(--accent); }
   .file-item { padding: 8px; border-radius: 6px; cursor: pointer; font-size: 13px; word-break: break-all; }
   .file-item:hover, .file-item.active { background: var(--bg); }
@@ -289,9 +291,21 @@
   <aside>
     <div class="drop" id="dropZone">
       <span data-i18n="drop.text">Drop files here or</span><br>
-      <button id="pickBtn" style="margin-top:8px" data-i18n="drop.pick">Choose files</button>
-      <input type="file" id="fileInput" multiple hidden
-        accept=".pdf,.hwp,.hwpx,.docx,.pptx,.xlsx,.xls,.csv,.md,.txt,.png,.jpg,.jpeg,.gif,.webp">
+      <div class="pick-row">
+        <button id="pickBtn" data-i18n="drop.pick">Choose files</button>
+        <select id="pickType" aria-label="File type">
+          <option value="docs" data-i18n="pick.docs">All supported documents</option>
+          <option value="all" data-i18n="pick.all">All files</option>
+          <option value="pdf">PDF</option>
+          <option value="hangul" data-i18n="pick.hangul">Hangul (HWP/HWPX)</option>
+          <option value="word" data-i18n="pick.word">Word (DOCX)</option>
+          <option value="excel" data-i18n="pick.excel">Excel (XLSX/XLS/CSV)</option>
+          <option value="ppt" data-i18n="pick.ppt">PowerPoint (PPTX)</option>
+          <option value="text" data-i18n="pick.text">Text (TXT/MD)</option>
+          <option value="image" data-i18n="pick.image">Images</option>
+        </select>
+      </div>
+      <input type="file" id="fileInput" multiple hidden>
     </div>
     <h2 data-i18n="list.recent">Opened documents</h2>
     <div id="fileList"><div class="empty" data-i18n="list.empty">No documents opened yet</div></div>
@@ -460,8 +474,69 @@
     });
   })();
 
-  function addFiles(fileList) {
-    const added = Array.from(fileList);
+  // ---------- 파일 선택: 형식별 목록 ----------
+  // 안드로이드는 확장자가 아니라 파일 종류(MIME)로 거르는데, .hwpx 처럼 안드로이드가 모르는 확장자는 목록에서 빠짐.
+  // 그래서 확장자와 함께 알려진 MIME 이름을 모두 넘김 (기기마다 HWP/HWPX 를 부르는 이름이 다름).
+  const PICK_TYPES = {
+    pdf: [".pdf", "application/pdf"],
+    hangul: [".hwp", ".hwpx", "application/x-hwp", "application/haansofthwp", "application/vnd.hancom.hwp", "application/hwp",
+      "application/hwp+zip", "application/vnd.hancom.hwpx", "application/haansofthwpx", "application/x-hwpx", "application/octet-stream"],
+    word: [".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+    excel: [".xlsx", ".xls", ".csv", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel", "text/csv", "text/comma-separated-values"],
+    ppt: [".pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"],
+    text: [".txt", ".md", "text/plain", "text/markdown", "text/x-markdown"],
+    image: [".png", ".jpg", ".jpeg", ".gif", ".webp", "image/png", "image/jpeg", "image/gif", "image/webp"],
+  };
+  function applyPickType(kind) {
+    const accept = kind === "all" ? "*/*"
+      : kind === "docs" ? [...new Set(Object.values(PICK_TYPES).flat())].join(",")
+      : (PICK_TYPES[kind] || []).join(",");
+    $("fileInput").setAttribute("accept", accept);
+  }
+  $("pickType").value = (() => { try { return localStorage.getItem("viewer.pickType") || "docs"; } catch { return "docs"; } })();
+  if (!$("pickType").value) $("pickType").value = "docs";
+  applyPickType($("pickType").value);
+  $("pickType").addEventListener("change", (e) => {
+    applyPickType(e.target.value);
+    try { localStorage.setItem("viewer.pickType", e.target.value); } catch { /* 무시 */ }
+  });
+
+  // ---------- 확장자가 없거나 낯선 파일: 내용으로 형식 판별 ----------
+  const KNOWN_EXTS = ["pdf", "hwp", "hwpx", "docx", "pptx", "xlsx", "xls", "csv", "md", "txt", "png", "jpg", "jpeg", "gif", "webp"];
+  async function sniffExt(file) {
+    const head = new Uint8Array(await file.slice(0, 8192).arrayBuffer());
+    const starts = (...b) => b.every((v, i) => head[i] === v);
+    if (starts(0x25, 0x50, 0x44, 0x46)) return "pdf";                       // %PDF
+    if (starts(0x89, 0x50, 0x4e, 0x47)) return "png";
+    if (starts(0xff, 0xd8, 0xff)) return "jpg";
+    if (starts(0x47, 0x49, 0x46, 0x38)) return "gif";
+    if (starts(0x52, 0x49, 0x46, 0x46) && head[8] === 0x57 && head[9] === 0x45) return "webp";
+    if (starts(0x50, 0x4b, 0x03, 0x04) || starts(0xd0, 0xcf, 0x11, 0xe0)) {  // zip (HWPX·DOCX·XLSX·PPTX) / CFB (HWP·XLS)
+      try {
+        const c = XLSX.CFB.read(new Uint8Array(await file.arrayBuffer()), { type: "array" });
+        const has = (p) => !!XLSX.CFB.find(c, p);
+        if (has("/Contents/section0.xml") || has("/Contents/content.hpf")) return "hwpx";
+        if (has("/word/document.xml")) return "docx";
+        if (has("/xl/workbook.xml")) return "xlsx";
+        if (has("/ppt/presentation.xml")) return "pptx";
+        if (has("/FileHeader")) return "hwp";
+        if (has("/Workbook") || has("/Book")) return "xls";
+      } catch { /* 판별 실패 */ }
+      return null;
+    }
+    // 글자 파일: 앞부분에 0 바이트가 없으면 텍스트로 봄
+    if (head.length && !head.includes(0)) return "txt";
+    return null;
+  }
+  async function normalizeFile(f) {
+    const ext = extOf(f.name);
+    if (f.name.includes(".") && KNOWN_EXTS.includes(ext)) return f;
+    const kind = await sniffExt(f).catch(() => null);
+    return kind ? new File([f], f.name.replace(/\.$/, "") + "." + kind, { type: f.type, lastModified: f.lastModified }) : f;
+  }
+
+  async function addFiles(fileList) {
+    const added = await Promise.all(Array.from(fileList).map(normalizeFile));
     for (const f of added) state.files.push(f);
     renderFileList();
     // 새로 고른 파일(마지막 항목)을 바로 연다
