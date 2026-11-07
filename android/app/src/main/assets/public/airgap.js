@@ -24,7 +24,7 @@
     "img-src 'self' blob: data:",
     "font-src 'self' blob: data:",
     "media-src 'self' blob: mediastream:",
-    "connect-src 'self' blob: data:",
+    "connect-src 'self' blob: data: ipc: http://ipc.localhost",
     "worker-src 'self' blob:",
     "frame-src 'self' blob: data: about:",
     "form-action 'none'",
@@ -35,7 +35,9 @@
   function isLocal(u) {
     try {
       var url = new URL(u, location.href);
-      return url.origin === origin || url.protocol === "blob:" || url.protocol === "data:";
+      // 윈도우판(Tauri)의 앱 내부 통신 채널은 외부 통신이 아님
+      return url.origin === origin || url.protocol === "blob:" || url.protocol === "data:" ||
+        url.protocol === "ipc:" || url.hostname === "ipc.localhost";
     } catch (e) { return false; }
   }
   function refuse(u) {

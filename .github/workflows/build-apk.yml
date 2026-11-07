@@ -64,7 +64,9 @@ jobs:
         run: |
           notes="문서 뷰어 최신 APK (커밋 ${GITHUB_SHA})
           - DocumentViewer.apk: 일반판
-          - DocumentViewer-Airgap.apk: 기관용 망분리판 (외부 통신 차단, 끌 수 없음)"
+          - DocumentViewer-Airgap.apk: 기관용 망분리판 (외부 통신 차단, 끌 수 없음)
+          - DocumentViewer-Setup.exe / DocumentViewer-Portable.zip: 윈도우 PC (설치형 / 설치 없이 실행)
+          - DocumentViewer-Airgap-Setup.exe / DocumentViewer-Airgap-Portable.zip: 윈도우 PC 기관용 망분리판"
           for i in 1 2 3 4; do
             if gh release view latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
               gh release upload latest DocumentViewer.apk DocumentViewer-Airgap.apk --clobber --repo "$GITHUB_REPOSITORY" \

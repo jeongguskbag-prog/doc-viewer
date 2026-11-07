@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Document Viewer",
+  "mainBinaryName": "DocumentViewer",
+  "version": "2.0.0",
+  "identifier": "com.docviewer.desktop",
+  "build": {
+    "frontendDist": "../../android/app/src/main/assets/public"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "문서 통합 뷰어 (Document Viewer)",
+        "width": 1280,
+        "height": 860,
+        "minWidth": 420,
+        "minHeight": 500,
+        "dragDropEnabled": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "publisher": "Document Viewer",
+    "shortDescription": "문서 통합 뷰어",
+    "longDescription": "HWP, HWPX, PDF, Word, Excel 문서를 인터넷 없이 여는 가벼운 통합 뷰어",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
+    "fileAssociations": [
+      { "ext": ["hwp"], "name": "HWP", "description": "한글 문서", "role": "Viewer" },
+      { "ext": ["hwpx"], "name": "HWPX", "description": "한글 문서 (HWPX)", "role": "Viewer" },
+      { "ext": ["pdf"], "name": "PDF", "description": "PDF 문서", "role": "Viewer" },
+      { "ext": ["docx"], "name": "DOCX", "description": "Word 문서", "role": "Viewer" },
+      { "ext": ["xlsx", "xls"], "name": "XLSX", "description": "Excel 문서", "role": "Viewer" },
+      { "ext": ["csv", "md", "txt"], "name": "Text", "description": "텍스트 문서", "role": "Viewer" }
+    ],
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["Korean", "English"],
+        "displayLanguageSelector": false
+      }
+    }
+  }
+}

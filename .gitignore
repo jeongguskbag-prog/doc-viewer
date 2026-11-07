@@ -12,3 +12,5 @@ android/.idea/
 !android/app/debug.keystore
 android/app/src/main/assets/public/lib/
 package-lock.json
+desktop/src-tauri/target/
+desktop/src-tauri/gen/

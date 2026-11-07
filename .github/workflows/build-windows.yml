@@ -1,0 +1,87 @@
+name: Build Windows
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # 웹앱 라이브러리(PDF·워드·엑셀·HWPX)를 앱 안에 넣음 (안드로이드와 같은 단계)
+      - name: Install document libraries
+        run: npm install --no-audit --no-fund
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli@2
+
+      - name: Build standard edition
+        shell: bash
+        run: |
+          node scripts/write-config.js standard
+          cd desktop/src-tauri
+          tauri build --ci
+          mkdir -p ../../out
+          cp target/release/bundle/nsis/*-setup.exe ../../out/DocumentViewer-Setup.exe
+          cp target/release/DocumentViewer.exe ../../out/DocumentViewer.exe
+
+      # 기관용: 망분리 모드 고정. 인터넷 없는 PC 를 위해 WebView2 내려받기 단계도 건너뜀
+      - name: Build air-gapped institutional edition
+        shell: bash
+        run: |
+          node scripts/write-config.js airgap
+          cd desktop/src-tauri
+          rm -rf target/release/bundle/nsis
+          tauri build --ci --config '{"productName":"Document Viewer (Airgap)","identifier":"com.docviewer.desktop.airgap","bundle":{"windows":{"webviewInstallMode":{"type":"skip"}}}}'
+          cp target/release/bundle/nsis/*-setup.exe ../../out/DocumentViewer-Airgap-Setup.exe
+          cp target/release/DocumentViewer.exe ../../out/DocumentViewer-Airgap.exe
+          cd ../..
+          node scripts/write-config.js standard
+
+      - name: Make portable zips
+        shell: pwsh
+        run: |
+          Compress-Archive -Path out/DocumentViewer.exe -DestinationPath out/DocumentViewer-Portable.zip
+          Compress-Archive -Path out/DocumentViewer-Airgap.exe -DestinationPath out/DocumentViewer-Airgap-Portable.zip
+          Get-ChildItem out | Format-Table Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DocumentViewer-Windows
+          path: |
+            out/DocumentViewer-Setup.exe
+            out/DocumentViewer-Portable.zip
+            out/DocumentViewer-Airgap-Setup.exe
+            out/DocumentViewer-Airgap-Portable.zip
+
+      - name: Publish to the "latest" release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          files="out/DocumentViewer-Setup.exe out/DocumentViewer-Portable.zip out/DocumentViewer-Airgap-Setup.exe out/DocumentViewer-Airgap-Portable.zip"
+          for i in 1 2 3 4 5; do
+            if gh release view latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              gh release upload latest $files --clobber --repo "$GITHUB_REPOSITORY" && exit 0
+            else
+              gh release create latest $files --title "문서 뷰어 (Document Viewer)" --notes "문서 뷰어 최신 버전" --latest --repo "$GITHUB_REPOSITORY" && exit 0
+            fi
+            echo "publish attempt $i failed; retrying"; sleep $((i * 15))
+          done
+          exit 1

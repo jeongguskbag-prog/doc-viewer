@@ -412,6 +412,19 @@
 
   // ---------- 다른 앱(카카오톡·Gmail·내 파일)에서 연 문서 받기 ----------
   // 네이티브 FileIntentPlugin 이 파일을 앱 캐시에 복사한 뒤 fileOpened 이벤트로 경로를 알려 줌
+  // 윈도우판: 탐색기에서 더블클릭(연결 프로그램)으로 연 파일 받기
+  (function initDesktopOpen() {
+    if (!(window.__TAURI__ && window.__TAURI__.core)) return;
+    const take = (f) => {
+      const bin = atob(f.data);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      addFiles([new File([bytes], f.name)]);
+    };
+    window.__TAURI__.core.invoke("take_opened_files").then((list) => (list || []).forEach(take)).catch(() => {});
+    if (window.__TAURI__.event) window.__TAURI__.event.listen("file-opened", (e) => take(e.payload));
+  })();
+
   (function initNativeOpen() {
     const cap = window.Capacitor;
     if (!cap || !cap.isNativePlatform || !cap.isNativePlatform() || !cap.addListener) return;
@@ -987,7 +1000,7 @@
   // 링크는 확인 창 없이 바로 엶 (http/https/mailto/tel 만 허용). 앱에서는 기본 브라우저·메일·전화 앱으로 넘어감
   function openExternal(url) {
     if (!isSafeUrl(url)) { alert(t("alert.badAddress")); return; }
-    window.open(url, "_blank", "noopener,noreferrer");
+    openUrl(url);
   }
 
   // 본문 안의 모든 링크는 기본 동작 대신 앱의 확인 창을 거치게 함
@@ -1741,6 +1754,15 @@
     return [];
   }
 
+  // 윈도우판(Tauri): window.__TAURI__ 가 있을 때만
+  const desktop = () => !!(window.__TAURI__ && window.__TAURI__.core);
+  const tauriInvoke = (cmd, args) => window.__TAURI__.core.invoke(cmd, args);
+  // 외부 주소 열기: 휴대폰은 기본 브라우저로 넘어가고, PC 는 기본 브라우저/메일 프로그램을 실행
+  function openUrl(url) {
+    if (desktop()) { tauriInvoke("open_external", { url }).catch((e) => alert(String(e))); return; }
+    if (/^(mailto|tel):/i.test(url)) { location.href = url; return; }
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
   const native = () => window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
   function blobToBase64(blob) {
     return new Promise((res, rej) => {
@@ -1755,18 +1777,25 @@
     return window.Capacitor.nativePromise("NativeIO", method, { name, mime: ((blob && blob.type) || "application/octet-stream").split(";")[0], data, ...extra });
   }
   // 앱(WebView)에서는 <a download> 가 동작하지 않으므로 다운로드 폴더에 직접 저장
+  // 윈도우판(Tauri)에서는 "다른 이름으로 저장" 창을 띄움
   async function saveOutput(blob, name) {
+    if (desktop()) {
+      const path = await tauriInvoke("save_file", { name, data: await blobToBase64(blob) });
+      if (path) setExportMsg(t("export.saved", { name: path }));
+      return !!path;
+    }
     if (native()) {
       try {
         const r = await nativeIO("save", blob, name);
         setExportMsg(r && r.folder ? t("export.savedTo", { name: r.name, folder: r.folder }) : t("export.saved", { name }));
       } catch (e) {
-        if (e && e.code === "CANCELLED") return;
+        if (e && e.code === "CANCELLED") return false;
         throw e;
       }
-      return;
+      return true;
     }
     saveBlob(blob, name);
+    return true;
   }
 
   function saveBlob(blob, name) {
@@ -1860,9 +1889,9 @@
       try { await navigator.share({ files: [file], title: name }); return; }
       catch (e) { if (e.name === "AbortError") return; }
     }
-    saveBlob(blob, name);
+    if (!(await saveOutput(blob, name)) && desktop()) return;
     setExportMsg(t("send.noShare"));
-    location.href = `mailto:?subject=${encodeURIComponent(name)}&body=${encodeURIComponent(t("send.mailBody", { name }))}`;
+    openUrl(`mailto:?subject=${encodeURIComponent(name)}&body=${encodeURIComponent(t("send.mailBody", { name }))}`);
   }
 
   // 공통 실행 래퍼: 진행 표시와 오류 표시
@@ -1934,10 +1963,10 @@
       setExportMsg(t("mail.opened", { name }));
       return;
     }
-    // 브라우저: 메일 링크는 첨부가 안 되므로 파일을 저장한 뒤 메일 작성 화면을 엶
-    saveBlob(blob, name);
+    // 브라우저·PC: 메일 링크는 첨부가 안 되므로 파일을 저장한 뒤 메일 작성 화면을 엶
+    if (!(await saveOutput(blob, name)) && desktop()) return;
     setExportMsg(t("send.mailBody", { name }));
-    location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    openUrl(`mailto:${encodeURI(to.replace(/\s+/g, ""))}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
   }
 
   // ---------- 팩스 보내기 ----------
@@ -1973,7 +2002,7 @@
     }
     try { await navigator.clipboard.writeText(digits); } catch { /* 복사 실패해도 계속 */ }
     if (native()) await nativeIO("share", blob, name, { title: t("fax.chooser") });
-    else saveBlob(blob, name);
+    else if (!(await saveOutput(blob, name)) && desktop()) return;
     setExportMsg(t("fax.sentToApp", { no: raw }));
   });
 

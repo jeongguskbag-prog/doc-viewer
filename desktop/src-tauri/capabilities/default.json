@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "웹앱이 쓰는 최소 권한: 이벤트 수신 (파일 열기 알림). 파일 시스템·셸 권한은 웹앱에 주지 않음.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
