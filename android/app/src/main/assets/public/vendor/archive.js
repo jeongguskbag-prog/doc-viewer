@@ -1,4 +1,4 @@
-// 압축 파일 읽기: ZIP · TAR · GZ(.gz/.tgz/.tar.gz)
+// 압축 파일 읽기: ZIP · TAR · GZ(.gz/.tgz/.tar.gz) · 알집 ALZ/EGG(vendor/alzegg.js)
 // - ZIP 은 중앙 디렉터리만 읽어 목록을 만들고, 파일은 열 때 하나씩 풂 (큰 압축 파일도 빠름)
 // - 윈도우에서 만든 ZIP 의 한글 파일 이름(CP949) 을 바르게 표시
 // - 암호 ZIP: 전통 방식(ZipCrypto)과 WinZip AES(128/192/256) — 암호 확인값·인증 코드 검사
@@ -193,6 +193,8 @@ window.ArchiveReader = (() => {
 
   /** bytes(Uint8Array) 와 파일 이름 → { kind, entries } */
   function open(bytes, name) {
+    // 알집 ALZ · EGG 는 vendor/alzegg.js 가 처리
+    if (window.AlzEgg && (AlzEgg.isEgg(bytes) || AlzEgg.isAlz(bytes))) return AlzEgg.open(bytes);
     const kind = kindOf(bytes, name || "");
     if (kind === "zip") return { kind, entries: readZip(bytes) };
     if (kind === "tar") return { kind, entries: readTar(bytes) };

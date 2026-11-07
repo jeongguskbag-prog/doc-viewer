@@ -319,7 +319,7 @@
           <option value="ppt" data-i18n="pick.ppt">PowerPoint (PPTX)</option>
           <option value="text" data-i18n="pick.text">Text (TXT/MD)</option>
           <option value="image" data-i18n="pick.image">Images</option>
-          <option value="archive" data-i18n="pick.archive">Archives (ZIP/TAR/GZ)</option>
+          <option value="archive" data-i18n="pick.archive">Archives (ZIP/ALZ/EGG/TAR/GZ)</option>
         </select>
       </div>
       <input type="file" id="fileInput" multiple hidden>
@@ -362,6 +362,11 @@
 <script src="vendor/aes.js"></script>
 <script src="vendor/hwpdist.js"></script>
 <script src="lib/fflate.min.js"></script>
+<script src="vendor/bzip2.js"></script>
+<script src="vendor/lzma.js"></script>
+<script src="vendor/azo.js"></script>
+<script src="vendor/lea.js"></script>
+<script src="vendor/alzegg.js"></script>
 <script src="vendor/archive.js"></script>
 <!-- HWPX 읽기·쓰기 (hwp-convert, MIT). ES 모듈이라 준비되면 window.HwpConvert 로 노출 -->
 <script type="module">
@@ -507,7 +512,7 @@
     ppt: [".pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"],
     text: [".txt", ".md", "text/plain", "text/markdown", "text/x-markdown"],
     image: [".png", ".jpg", ".jpeg", ".gif", ".webp", "image/png", "image/jpeg", "image/gif", "image/webp"],
-    archive: [".zip", ".tar", ".gz", ".tgz", "application/zip", "application/x-zip-compressed", "application/x-zip",
+    archive: [".zip", ".tar", ".gz", ".tgz", ".alz", ".egg", "application/x-alz", "application/x-egg", "application/x-alz-compressed", "application/zip", "application/x-zip-compressed", "application/x-zip",
       "application/gzip", "application/x-gzip", "application/x-tar", "application/x-compressed-tar", "application/x-gtar"],
   };
   function applyPickType(kind) {
@@ -525,8 +530,8 @@
   });
 
   // ---------- 확장자가 없거나 낯선 파일: 내용으로 형식 판별 ----------
-  const KNOWN_EXTS = ["pdf", "hwp", "hwpx", "docx", "pptx", "xlsx", "xls", "csv", "md", "txt", "png", "jpg", "jpeg", "gif", "webp", "zip", "tar", "gz", "tgz"];
-  const ARCHIVE_EXTS = ["zip", "tar", "gz", "tgz"];
+  const KNOWN_EXTS = ["pdf", "hwp", "hwpx", "docx", "pptx", "xlsx", "xls", "csv", "md", "txt", "png", "jpg", "jpeg", "gif", "webp", "zip", "tar", "gz", "tgz", "alz", "egg"];
+  const ARCHIVE_EXTS = ["zip", "tar", "gz", "tgz", "alz", "egg"];
   async function sniffExt(file) {
     const head = new Uint8Array(await file.slice(0, 8192).arrayBuffer());
     const starts = (...b) => b.every((v, i) => head[i] === v);
@@ -550,6 +555,8 @@
       return head[0] === 0x50 ? "zip" : null;
     }
     if (head[0] === 0x1f && head[1] === 0x8b) return "gz";
+    if (starts(0x45, 0x47, 0x47, 0x41)) return "egg";              // EGGA (알집)
+    if (starts(0x41, 0x4c, 0x5a, 0x01)) return "alz";              // ALZ (알집)
     if (head.length > 262 && String.fromCharCode(...head.subarray(257, 262)) === "ustar") return "tar";
     // 글자 파일: 앞부분에 0 바이트가 없으면 텍스트로 봄
     if (head.length && !head.includes(0)) return "txt";
@@ -613,7 +620,7 @@
         case "hwp":  await renderHwp(file); break;
         case "hwpx": await renderHwpx(file); break;
         case "pptx": await renderPptx(file); break;
-        case "zip": case "tar": case "gz": case "tgz":
+        case "zip": case "tar": case "gz": case "tgz": case "alz": case "egg":
           await renderArchive(file); break;
         case "docx": await renderDocx(file); break;
         case "xlsx":
@@ -739,11 +746,11 @@
   const EXTRACT_MAX_FILES = 5000, EXTRACT_MAX_BYTES = 2 * 1024 * 1024 * 1024;
   const fileIcon = (name) => {
     const e = extOf(name);
-    return ({ pdf: "📕", hwp: "📘", hwpx: "📘", docx: "📄", xlsx: "📊", xls: "📊", csv: "📊", pptx: "📙", txt: "📝", md: "📝", zip: "📦", tar: "📦", gz: "📦", tgz: "📦" })[e]
+    return ({ pdf: "📕", hwp: "📘", hwpx: "📘", docx: "📄", xlsx: "📊", xls: "📊", csv: "📊", pptx: "📙", txt: "📝", md: "📝", zip: "📦", tar: "📦", gz: "📦", tgz: "📦", alz: "📦", egg: "📦" })[e]
       || (IMAGE_EXTS.includes(e) ? "🖼" : "📎");
   };
   function archiveErrorText(e) {
-    const map = { needPassword: "zip.needPassword", badPassword: "zip.badPassword", tooBig: "zip.tooBig", tooMany: "zip.tooMany", method: "zip.method", corrupt: "zip.corrupt", notArchive: "zip.corrupt" };
+    const map = { split: "zip.split", needPassword: "zip.needPassword", badPassword: "zip.badPassword", tooBig: "zip.tooBig", tooMany: "zip.tooMany", method: "zip.method", corrupt: "zip.corrupt", notArchive: "zip.corrupt" };
     return e && map[e.code] ? t(map[e.code]) : (e && e.message) || String(e);
   }
 
