@@ -87,12 +87,10 @@ window.SevenRar = (() => {
       current = arc;
       list = await arc.getFilesArray();
     } catch (e) { throw mapError(e); }
-    // 파일 이름까지 암호화된 압축은 목록이 비어 보임
-    if (!list.length) {
-      let enc = null;
-      try { enc = await arc.hasEncryptedData(); } catch { /* 판별 실패 */ }
-      if (enc) throw err("encUnsupported");
-    }
+    // 암호 걸린 압축인지 (목록을 다 읽은 뒤라 판별 가능). 파일 이름까지 암호화된 압축은 목록이 비어 보임
+    let enc = false;
+    try { enc = (await arc.hasEncryptedData()) === true; } catch { /* 판별 실패 */ }
+    if (!list.length && enc) throw err("encUnsupported");
     if (list.length > MAX_ENTRIES) throw err("tooMany");
     const entries = list.map(({ file: cf, path }) => {
       const size = cf.size || 0;
@@ -101,8 +99,10 @@ window.SevenRar = (() => {
         dir: false,
         size,
         csize: size,
-        encrypted: false,
+        encrypted: enc,
         read: async () => {
+          // 내용만 암호화된 7z·RAR: "손상" 대신 정확한 안내 (암호 해제는 아직 지원하지 않음)
+          if (enc) throw err("encUnsupported");
           if (size > MAX_ENTRY) throw err("tooBig");
           if (current !== arc) throw err("corrupt", "archive closed");
           let out;
